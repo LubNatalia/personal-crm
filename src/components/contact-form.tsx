@@ -1,0 +1,206 @@
+"use client";
+
+import { useActionState, useId, useLayoutEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import type {
+  ContactField,
+  ContactFormState,
+  ContactValues,
+} from "@/lib/contact-form";
+
+type ContactFormAction = (
+  state: ContactFormState,
+  formData: FormData,
+) => Promise<ContactFormState>;
+
+type ContactFormProps = {
+  action: ContactFormAction;
+  initialValues: ContactValues;
+  submitLabel: string;
+  autoFocusName?: boolean;
+  // Start every visit with a fresh form (used for "new contact")
+  resetOnLeave?: boolean;
+};
+
+const INITIAL_STATE: ContactFormState = { status: "idle" };
+
+export function ContactForm({ resetOnLeave, ...props }: ContactFormProps) {
+  const [instance, setInstance] = useState(0);
+
+  // Next.js keeps visited pages mounted but hidden (React Activity), so the
+  // form would otherwise keep the previous input. Remount it when hidden.
+  useLayoutEffect(() => {
+    if (!resetOnLeave) return;
+    return () => setInstance((n) => n + 1);
+  }, [resetOnLeave]);
+
+  return <ContactFormBody key={instance} {...props} />;
+}
+
+function ContactFormBody({
+  action,
+  initialValues,
+  submitLabel,
+  autoFocusName,
+}: Omit<ContactFormProps, "resetOnLeave">) {
+  const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
+  // The result message is shown only right after a submit: it hides when
+  // the user edits the form again or leaves the page
+  const [showResult, setShowResult] = useState(false);
+  useLayoutEffect(() => () => setShowResult(false), []);
+
+  // Hidden pages stay in the DOM, so ids must be unique per form instance
+  const idPrefix = useId();
+  const fieldId = (field: ContactField) => `${idPrefix}-${field}`;
+
+  // After a submit the form shows what was submitted, so input is never lost
+  const values = state.values ?? initialValues;
+  const errors = state.errors ?? {};
+
+  return (
+    <form
+      action={(formData) => {
+        setShowResult(true);
+        formAction(formData);
+      }}
+      onInput={() => setShowResult(false)}
+      noValidate
+      className="grid gap-5"
+    >
+      <div className="grid gap-5 sm:grid-cols-2">
+        <TextField
+          id={fieldId("name")}
+          field="name"
+          label="Имя"
+          value={values.name}
+          error={errors.name}
+          required
+          autoFocus={autoFocusName}
+        />
+        <TextField
+          id={fieldId("about")}
+          field="about"
+          label="Кто это"
+          placeholder="Например: коллега, сосед, врач"
+          value={values.about}
+          error={errors.about}
+        />
+        <TextField
+          id={fieldId("howWeMet")}
+          field="howWeMet"
+          label="Откуда знакомы"
+          placeholder="Например: учились вместе"
+          value={values.howWeMet}
+          error={errors.howWeMet}
+        />
+        <TextField
+          id={fieldId("phone")}
+          field="phone"
+          label="Телефон"
+          type="tel"
+          placeholder="+7 900 000-00-00"
+          value={values.phone}
+          error={errors.phone}
+        />
+        <TextField
+          id={fieldId("email")}
+          field="email"
+          label="Почта"
+          type="email"
+          placeholder="name@example.com"
+          value={values.email}
+          error={errors.email}
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor={fieldId("notes")}>Заметки</Label>
+        <Textarea
+          id={fieldId("notes")}
+          name="notes"
+          defaultValue={values.notes}
+          placeholder="О чём говорили, о чём договорились"
+          className="min-h-40"
+          aria-invalid={errors.notes ? true : undefined}
+          aria-describedby={errors.notes ? `${fieldId("notes")}-error` : undefined}
+        />
+        {errors.notes && (
+          <FieldError id={`${fieldId("notes")}-error`} message={errors.notes} />
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Сохраняю…" : submitLabel}
+        </Button>
+        {!pending && showResult && state.status === "saved" && (
+          <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
+            Изменения сохранены
+          </p>
+        )}
+        {!pending && showResult && state.status === "error" && (
+          <p role="alert" className="text-sm text-destructive">
+            Не сохранено: исправьте поля, отмеченные красным
+          </p>
+        )}
+      </div>
+    </form>
+  );
+}
+
+type TextFieldProps = {
+  id: string;
+  field: ContactField;
+  label: string;
+  value: string;
+  error?: string;
+  type?: "text" | "tel" | "email";
+  placeholder?: string;
+  required?: boolean;
+  autoFocus?: boolean;
+};
+
+function TextField({
+  id,
+  field,
+  label,
+  value,
+  error,
+  type = "text",
+  placeholder,
+  required,
+  autoFocus,
+}: TextFieldProps) {
+  const errorId = `${id}-error`;
+  return (
+    <div className="grid content-start gap-2">
+      <Label htmlFor={id}>
+        {label}
+        {required && <span className="text-destructive">*</span>}
+      </Label>
+      <Input
+        id={id}
+        name={field}
+        type={type}
+        defaultValue={value}
+        placeholder={placeholder}
+        required={required}
+        autoFocus={autoFocus}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+      />
+      {error && <FieldError id={errorId} message={error} />}
+    </div>
+  );
+}
+
+function FieldError({ id, message }: { id: string; message: string }) {
+  return (
+    <p id={id} className="text-sm text-destructive">
+      {message}
+    </p>
+  );
+}

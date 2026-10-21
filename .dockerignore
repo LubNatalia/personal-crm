@@ -1,0 +1,10 @@
+# Keep secrets and local build output out of the image build
+.env*
+.git
+.github
+.claude
+.next
+node_modules
+deploy
+*.tsbuildinfo
+next-env.d.ts

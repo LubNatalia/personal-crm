@@ -3,16 +3,21 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-const url = process.env.DATABASE_URL;
-if (!url) {
-  throw new Error("DATABASE_URL is not set");
+function createDb() {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("DATABASE_URL is not set");
+  }
+  return drizzle(postgres(url), { schema });
 }
 
-// Reuse one connection pool across hot reloads in development
-const globalForDb = globalThis as unknown as { sql?: postgres.Sql };
-const sql = globalForDb.sql ?? postgres(url);
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.sql = sql;
-}
+// Created on first query, not on import: `next build` loads this module
+// without DATABASE_URL. Kept on globalThis to survive hot reloads in development
+const globalForDb = globalThis as unknown as {
+  db?: ReturnType<typeof createDb>;
+};
 
-export const db = drizzle(sql, { schema });
+export function getDb() {
+  globalForDb.db ??= createDb();
+  return globalForDb.db;
+}

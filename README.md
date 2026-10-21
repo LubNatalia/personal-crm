@@ -63,3 +63,46 @@
 - Остановить базу: `docker compose stop`. Данные при этом сохраняются.
 - Внимание: команда `docker compose down -v` удаляет все данные базы.
 - Схема таблиц - `src/db/schema.ts`. После её изменения: `pnpm db:generate` (создать миграцию), затем `pnpm db:migrate` (применить).
+
+## Как выкатить
+
+Приложение работает на сервере: https://app.lyna.tech. Выкатка автоматическая.
+
+### Выкатить новую версию
+
+1. Закоммитьте изменения и сделайте push в ветку `main`.
+2. Через несколько минут новая версия на сервере. Ход выкатки виден во вкладке Actions: https://github.com/LubNatalia/personal-crm/actions (зелёная галочка - выкатилось, красный крестик - упало).
+3. Проверить: откройте https://app.lyna.tech/health - там `"status":"ok"`, а в `"version"` номер (SHA) последнего коммита.
+
+### Как это устроено
+
+1. GitHub Actions (`.github/workflows/deploy.yml`) собирает образ приложения с тегом - SHA коммита - и кладёт его в GitHub Container Registry (GHCR).
+2. Затем копирует файлы из `deploy/` на сервер в `/opt/crm/prod` и запускает там `deploy.sh`:
+   - скачивает новый образ;
+   - применяет миграции базы разовым контейнером из того же образа. Упали миграции - новая версия не запускается, работает старая;
+   - запускает новую версию;
+   - проверяет, что `/health` отвечает 200 (smoke). Не ответил - выкатка упала, автоматического отката нет;
+   - после удачной выкатки удаляет старые образы: остаются текущий и предыдущий.
+3. На сервере docker compose, проект `prod`: база PostgreSQL (`db`) и приложение (`app`) на `127.0.0.1:3000`; nginx отдаёт его наружу на https://app.lyna.tech.
+
+### Если выкатка упала
+
+Посмотрите лог во вкладке Actions. Вернуть предыдущую версию можно только вручную:
+
+```
+ssh crm
+bash /opt/crm/prod/rollback.sh
+```
+
+Миграции базы при откате не отменяются.
+
+### Секреты
+
+- На сервере: `/opt/crm/prod/.env`, права 600. Строки: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL` (адрес базы - `db`, не `localhost`).
+- В GitHub (Settings → Secrets and variables → Actions): секрет `DEPLOY_SSH_KEY` - ключ, которым выкатка заходит на сервер; переменные `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KNOWN_HOSTS`.
+
+### Полезные команды на сервере
+
+- Что запущено: `docker ps`
+- Логи приложения: `docker logs --tail 100 prod-app-1`
+- Тестовые данные (срабатывает только на пустой базе): `cd /opt/crm/prod && APP_IMAGE=$(cat current-image) docker compose -p prod -f compose.yml run --rm migrate node db/seed.ts`

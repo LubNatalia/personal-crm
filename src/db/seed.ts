@@ -1,11 +1,17 @@
 // Fills an empty contacts table with realistic test data.
-// Usage: pnpm db:seed
-import { loadEnvConfig } from "@next/env";
+// Usage: pnpm db:seed (on the server: node db/seed.ts inside the app image)
+import { createRequire } from "node:module";
 import { fakerRU as faker } from "@faker-js/faker";
 import { count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { contacts, type NewContact } from "./schema";
+import { contacts, type NewContact } from "./schema.ts";
+
+// @next/env is CommonJS whose exports Node can't import by name; require
+// loads it the same way under tsx and under Node's own TypeScript support
+const { loadEnvConfig } = createRequire(import.meta.url)(
+  "@next/env",
+) as typeof import("@next/env");
 
 const SEED_COUNT = 1000;
 const BATCH_SIZE = 200;

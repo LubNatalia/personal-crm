@@ -1,7 +1,7 @@
 import "server-only";
 import { asc, count, eq, ilike, sql } from "drizzle-orm";
 import type { ContactInput } from "@/lib/contact-form";
-import { db } from "./index";
+import { getDb } from "./index";
 import { contacts } from "./schema";
 
 // Escape LIKE wildcards so the user's text is matched literally
@@ -10,7 +10,7 @@ function escapeLikePattern(value: string) {
 }
 
 export async function listContacts(nameQuery: string) {
-  return db
+  return getDb()
     .select({
       id: contacts.id,
       name: contacts.name,
@@ -29,17 +29,20 @@ export async function listContacts(nameQuery: string) {
 }
 
 export async function countContacts() {
-  const [row] = await db.select({ value: count() }).from(contacts);
+  const [row] = await getDb().select({ value: count() }).from(contacts);
   return row.value;
 }
 
 export async function getContact(id: number) {
-  const [row] = await db.select().from(contacts).where(eq(contacts.id, id));
+  const [row] = await getDb()
+    .select()
+    .from(contacts)
+    .where(eq(contacts.id, id));
   return row ?? null;
 }
 
 export async function createContact(input: ContactInput) {
-  const [row] = await db
+  const [row] = await getDb()
     .insert(contacts)
     .values(input)
     .returning({ id: contacts.id });
@@ -47,7 +50,7 @@ export async function createContact(input: ContactInput) {
 }
 
 export async function updateContact(id: number, input: ContactInput) {
-  const [row] = await db
+  const [row] = await getDb()
     .update(contacts)
     .set({ ...input, updatedAt: new Date() })
     .where(eq(contacts.id, id))

@@ -34,7 +34,7 @@ if ! docker image inspect "$image" >/dev/null 2>&1; then
       | docker login ghcr.io --username "$registry_user" --password-stdin >/dev/null
     trap 'docker logout ghcr.io >/dev/null' EXIT
   fi
-  docker pull --quiet "$image"
+  docker pull "$image"
 fi
 export APP_IMAGE="$image"
 

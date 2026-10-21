@@ -21,6 +21,10 @@ ssh_opts=(
   -o UserKnownHostsFile="$ssh_dir/known_hosts"
   -o StrictHostKeyChecking=yes
   -o BatchMode=yes
+  # A slow image pull prints nothing for minutes; keep the connection from
+  # being dropped as idle on the way
+  -o ServerAliveInterval=30
+  -o ServerAliveCountMax=6
 )
 target="$DEPLOY_USER@$DEPLOY_HOST"
 

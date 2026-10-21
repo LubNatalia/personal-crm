@@ -45,6 +45,8 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    # The first pull on the server is slow (~150 KB/s from GHCR)
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: read

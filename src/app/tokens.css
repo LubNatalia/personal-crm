@@ -1,0 +1,132 @@
+/* Личная CRM — токены дизайна (вариант C «Лаванда»), Tailwind CSS 4.
+   The first @theme block is design/tokens.css as delivered by the designer.
+   The only change in it is --font-sans: Manrope is self-hosted (astro.config.mjs)
+   and exposed as --font-manrope.
+   The second @theme block adds the type scale, spacing and widths
+   taken from design/HANDOFF.md and design/reference/*.html. */
+
+@theme {
+  /* Шрифт */
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+
+  /* Фон и текст */
+  --color-lavender-50: #F7F6FD;   /* surface-soft: плитки внутри белых блоков */
+  --color-lavender-100: #EEEBFA;  /* основной фон страницы, чипы */
+  --color-lavender-200: #D9D2F7;  /* подложка «стопки», плашка хранения, линия подвала */
+  --color-lavender-line: #E4E0F5; /* разделители строк в списке контактов */
+  --color-lavender-avatar: #E2DFEE; /* нейтральные аватары */
+
+  --color-ink: #1E1838;           /* заголовки, основной текст */
+  --color-ink-soft: #433C5E;      /* лид-абзацы и текст карточек */
+  --color-ink-muted: #575073;     /* подписи, метки полей */
+  --color-ink-chip: #4A4366;      /* текст белой плашки над H1 */
+
+  /* Акцент — кнопки, номера шагов, иконки выгод */
+  --color-accent: #5B3FD9;
+  --color-accent-hover: #4329B8;
+
+  /* Коралловый — блок «Проблема», аватар Анны */
+  --color-coral-50: #FFF4F0;
+  --color-coral-100: #FFE1D6;
+  --color-coral-700: #B4361E;
+
+  /* Заметка-стикер */
+  --color-note: #FFF4CC;
+  --color-note-ink: #7A5A00;
+
+  /* Скругления */
+  --radius-chip: 9999px;
+  --radius-field: 14px;   /* поля телефон/почта, строка поиска */
+  --radius-note: 16px;
+  --radius-btn: 18px;
+  --radius-tile: 20px;    /* боли, выгоды (мобильный) */
+  --radius-card: 24px;    /* карточки (мобильный) */
+  --radius-card-lg: 28px; /* карточки (десктоп) */
+  --radius-section: 32px; /* секции (мобильный) */
+  --radius-section-lg: 48px; /* секции (десктоп) */
+
+  /* Тени */
+  --shadow-cta: 0 10px 24px rgb(91 63 217 / 0.28);
+  --shadow-card: 0 16px 40px rgb(30 24 56 / 0.10);
+  --shadow-card-lg: 0 24px 56px rgb(30 24 56 / 0.12);
+  --shadow-step: 0 8px 24px rgb(30 24 56 / 0.06);
+  --shadow-step-lg: 0 10px 30px rgb(30 24 56 / 0.06);
+
+  /* Трекинг заголовков */
+  --tracking-h1: -0.035em;
+  --tracking-h1-lg: -0.04em;
+  --tracking-h2: -0.03em;
+  --tracking-h3: -0.02em;
+}
+
+@theme {
+  /* Extra radii used in the references */
+  --radius-icon: 12px;     /* coral icon squares (mobile) */
+  --radius-icon-lg: 14px;  /* coral icon squares (desktop) */
+  --radius-field-lg: 16px; /* phone/email fields (desktop) */
+  --radius-note-lg: 18px;  /* sticky note (desktop) */
+  --tracking-h2-lg: -0.035em;
+
+  /* Headings. "-lg" sizes are for desktop and grow with the screen */
+  --text-h1: 2.5rem;
+  --text-h1--line-height: 1.08;
+  --text-h1--letter-spacing: var(--tracking-h1);
+  --text-h1-lg: clamp(2.5rem, 5vw, 4.25rem);
+  --text-h1-lg--line-height: 1.04;
+  --text-h1-lg--letter-spacing: var(--tracking-h1-lg);
+
+  --text-h2: 2.125rem;
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: var(--tracking-h2);
+  --text-h2-lg: clamp(2.125rem, 3.6vw, 3.25rem);
+  --text-h2-lg--line-height: 1.08;
+  --text-h2-lg--letter-spacing: var(--tracking-h2-lg);
+
+  /* Heading of the final call to action */
+  --text-h2-final: 2.25rem;
+  --text-h2-final--line-height: 1.08;
+  --text-h2-final--letter-spacing: var(--tracking-h1);
+  --text-h2-final-lg: clamp(2.25rem, 4vw, 3.5rem);
+  --text-h2-final-lg--line-height: 1.06;
+  --text-h2-final-lg--letter-spacing: var(--tracking-h1-lg);
+
+  /* Text sizes in px. Line height is the font's natural one;
+     paragraphs add leading-text / leading-text-lg / leading-note */
+  --text-12: 0.75rem;
+  --text-12--line-height: normal;
+  --text-13: 0.8125rem;
+  --text-13--line-height: normal;
+  --text-14: 0.875rem;
+  --text-14--line-height: normal;
+  --text-15: 0.9375rem;
+  --text-15--line-height: normal;
+  --text-16: 1rem;
+  --text-16--line-height: normal;
+  --text-17: 1.0625rem;
+  --text-17--line-height: normal;
+  --text-18: 1.125rem;
+  --text-18--line-height: normal;
+  --text-20: 1.25rem;
+  --text-20--line-height: normal;
+  --text-22: 1.375rem;
+  --text-22--line-height: normal;
+  --text-24: 1.5rem;
+  --text-24--line-height: normal;
+  --text-26: 1.625rem;
+  --text-26--line-height: normal;
+
+  --leading-text: 1.5;     /* paragraphs */
+  --leading-text-lg: 1.55; /* card paragraphs on desktop */
+  --leading-note: 1.45;    /* sticky note, benefits subtitle */
+
+  /* Page rhythm. The base step (--spacing: 4px) is Tailwind's default */
+  --spacing-gutter: 1.25rem;     /* side padding, mobile */
+  --spacing-gutter-lg: 1.5rem;   /* side padding, desktop */
+  --spacing-section: 3.5rem;     /* vertical section padding, mobile */
+  --spacing-section-lg: 6.5rem;  /* vertical section padding, desktop */
+
+  /* Content widths */
+  --container-page: 1200px;
+  --container-card: 480px;  /* contact card in the hero */
+  --container-final: 640px; /* final call to action */
+}

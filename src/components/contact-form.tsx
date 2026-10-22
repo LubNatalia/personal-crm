@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useActionState, useId, useLayoutEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +69,7 @@ function ContactFormBody({
       }}
       onInput={() => setShowResult(false)}
       noValidate
-      className="grid gap-5"
+      className="grid gap-6"
     >
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField
@@ -123,7 +124,8 @@ function ContactFormBody({
           name="notes"
           defaultValue={values.notes}
           placeholder="О чём говорили, о чём договорились"
-          className="min-h-40"
+          // Looks like the sticky note on the landing's contact card
+          className="min-h-40 rounded-note bg-note px-4 py-3.5 lg:rounded-note-lg lg:px-4.5 lg:py-4"
           aria-invalid={errors.notes ? true : undefined}
           aria-describedby={errors.notes ? `${fieldId("notes")}-error` : undefined}
         />
@@ -132,17 +134,21 @@ function ContactFormBody({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={pending}>
+      <div className="flex flex-wrap items-center gap-3 lg:gap-4">
+        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
           {pending ? "Сохраняю…" : submitLabel}
         </Button>
         {!pending && showResult && state.status === "saved" && (
-          <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
+          <p
+            role="status"
+            className="flex items-center gap-2 text-15 font-semibold text-accent lg:text-16"
+          >
+            <Check aria-hidden="true" className="size-5 shrink-0" />
             Изменения сохранены
           </p>
         )}
         {!pending && showResult && state.status === "error" && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-15 font-semibold text-coral-700 lg:text-16">
             Не сохранено: исправьте поля, отмеченные красным
           </p>
         )}
@@ -179,7 +185,7 @@ function TextField({
     <div className="grid content-start gap-2">
       <Label htmlFor={id}>
         {label}
-        {required && <span className="text-destructive">*</span>}
+        {required && <span className="text-coral-700">*</span>}
       </Label>
       <Input
         id={id}
@@ -199,7 +205,7 @@ function TextField({
 
 function FieldError({ id, message }: { id: string; message: string }) {
   return (
-    <p id={id} className="text-sm text-destructive">
+    <p id={id} className="text-14 text-coral-700">
       {message}
     </p>
   );

@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactForm } from "@/components/contact-form";
@@ -11,14 +12,23 @@ export const metadata: Metadata = {
 
 export default function NewContactPage() {
   return (
-    <div className="grid max-w-3xl gap-5">
+    <div className="mx-auto grid w-full max-w-3xl gap-5 lg:gap-6">
       <Link
         href="/"
-        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+        className="flex min-h-11 w-fit items-center rounded-field text-14 font-semibold text-ink-muted transition-colors hover:text-accent focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-accent lg:text-15"
       >
         ← Все контакты
       </Link>
-      <h1 className="text-2xl font-semibold">Новый контакт</h1>
+      <div className="flex items-center gap-4 lg:gap-5">
+        {/* The "add" circle from the landing's final call to action */}
+        <span
+          aria-hidden="true"
+          className="flex size-16 shrink-0 items-center justify-center rounded-full bg-accent text-white lg:size-19"
+        >
+          <Plus strokeWidth={2.4} className="size-6.5 lg:size-7.5" />
+        </span>
+        <h1 className="text-h2 font-extrabold">Новый контакт</h1>
+      </div>
       <Card>
         <CardContent>
           <ContactForm

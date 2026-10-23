@@ -12,6 +12,8 @@ const buttonVariants = cva(
         outline:
           "border-lavender-200 bg-white text-ink hover:border-accent hover:text-accent",
         ghost: "text-ink-muted hover:bg-lavender-50 hover:text-accent",
+        // Irreversible actions, e.g. confirming a deletion
+        destructive: "bg-coral-700 text-white hover:bg-coral-700/90",
       },
       size: {
         default: "h-12 px-5 text-16",

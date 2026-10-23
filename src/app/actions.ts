@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createContact, updateContact } from "@/db/contacts";
+import { createContact, deleteContact, updateContact } from "@/db/contacts";
 import { parseContactForm, type ContactFormState } from "@/lib/contact-form";
 
 export async function createContactAction(
@@ -42,4 +42,20 @@ export async function updateContactAction(
   revalidatePath("/");
   revalidatePath(`/contacts/${id}`);
   return { status: "saved", values: parsed.values };
+}
+
+export async function deleteContactAction(id: number) {
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error(`Invalid contact id: ${id}`);
+  }
+
+  const name = await deleteContact(id);
+  revalidatePath("/");
+  revalidatePath(`/contacts/${id}`);
+  // Already deleted (e.g. in another tab): the goal is reached, just go back
+  if (name === null) {
+    redirect("/");
+  }
+  // Back to the list, which confirms the deletion by name
+  redirect(`/?deleted=${encodeURIComponent(name)}`);
 }

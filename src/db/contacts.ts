@@ -57,3 +57,12 @@ export async function updateContact(id: number, input: ContactInput) {
     .returning({ id: contacts.id });
   return row !== undefined;
 }
+
+// Returns the deleted contact's name, or null if it was already gone
+export async function deleteContact(id: number) {
+  const [row] = await getDb()
+    .delete(contacts)
+    .where(eq(contacts.id, id))
+    .returning({ name: contacts.name });
+  return row?.name ?? null;
+}

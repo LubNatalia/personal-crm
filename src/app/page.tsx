@@ -1,6 +1,7 @@
 import { Check, Plus, Search } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ContactAvatar } from "@/components/contact-avatar";
 import { ScrollIntoViewRow } from "@/components/scroll-into-view-row";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -20,6 +21,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
   const addedId = typeof params.added === "string" ? Number(params.added) : null;
+  const deletedName = typeof params.deleted === "string" ? params.deleted : null;
 
   const [items, total] = await Promise.all([
     listContacts(query),
@@ -41,17 +43,11 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
       </div>
 
       {added && (
-        <p
-          role="status"
-          className="flex items-start gap-3 rounded-tile bg-lavender-200 px-4.5 py-4 text-15 leading-text lg:items-center lg:gap-3.5 lg:rounded-card lg:px-6 lg:py-4.5 lg:text-17"
-        >
-          <Check
-            aria-hidden="true"
-            className="mt-0.5 size-5.5 shrink-0 text-accent lg:mt-0 lg:size-6"
-          />
+        <StatusNotice>
           Контакт «{added.name}» добавлен. Он выделен в списке ниже.
-        </p>
+        </StatusNotice>
       )}
+      {deletedName && <StatusNotice>Контакт «{deletedName}» удалён.</StatusNotice>}
 
       <Card>
         <CardContent className="grid gap-4 lg:gap-5">
@@ -139,5 +135,21 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// Confirms what has just happened to a contact
+function StatusNotice({ children }: { children: ReactNode }) {
+  return (
+    <p
+      role="status"
+      className="flex items-start gap-3 rounded-tile bg-lavender-200 px-4.5 py-4 text-15 leading-text wrap-break-word lg:items-center lg:gap-3.5 lg:rounded-card lg:px-6 lg:py-4.5 lg:text-17"
+    >
+      <Check
+        aria-hidden="true"
+        className="mt-0.5 size-5.5 shrink-0 text-accent lg:mt-0 lg:size-6"
+      />
+      <span className="min-w-0">{children}</span>
+    </p>
   );
 }

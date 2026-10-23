@@ -1,7 +1,13 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { useActionState, useId, useLayoutEffect, useState } from "react";
+import {
+  useActionState,
+  useId,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +30,8 @@ type ContactFormProps = {
   autoFocusName?: boolean;
   // Start every visit with a fresh form (used for "new contact")
   resetOnLeave?: boolean;
+  // Shown at the far end of the submit row, e.g. "delete contact"
+  secondaryAction?: ReactNode;
 };
 
 const INITIAL_STATE: ContactFormState = { status: "idle" };
@@ -46,6 +54,7 @@ function ContactFormBody({
   initialValues,
   submitLabel,
   autoFocusName,
+  secondaryAction,
 }: Omit<ContactFormProps, "resetOnLeave">) {
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE);
   // The result message is shown only right after a submit: it hides when
@@ -151,6 +160,9 @@ function ContactFormBody({
           <p role="alert" className="text-15 font-semibold text-coral-700 lg:text-16">
             Не сохранено: исправьте поля, отмеченные красным
           </p>
+        )}
+        {secondaryAction && (
+          <div className="w-full sm:ml-auto sm:w-auto">{secondaryAction}</div>
         )}
       </div>
     </form>

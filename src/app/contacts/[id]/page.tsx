@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ContactAvatar } from "@/components/contact-avatar";
 import { ContactForm } from "@/components/contact-form";
+import { DeleteContactButton } from "@/components/delete-contact-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getContact } from "@/db/contacts";
 import { updateContactAction } from "@/app/actions";
@@ -56,6 +57,9 @@ export default async function ContactPage({
               notes: contact.notes ?? "",
             }}
             submitLabel="Сохранить"
+            secondaryAction={
+              <DeleteContactButton id={contact.id} name={contact.name} />
+            }
           />
         </CardContent>
       </Card>

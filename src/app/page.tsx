@@ -3,6 +3,7 @@ import Form from "next/form";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ContactAvatar } from "@/components/contact-avatar";
+import { DueContacts } from "@/components/due-contacts";
 import { ScrollIntoViewRow } from "@/components/scroll-into-view-row";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { countContacts, listContacts } from "@/db/contacts";
+import { countContacts, listContacts, listDueContacts } from "@/db/contacts";
 
 export default async function ContactsPage({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
@@ -23,9 +24,11 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
   const addedId = typeof params.added === "string" ? Number(params.added) : null;
   const deletedName = typeof params.deleted === "string" ? params.deleted : null;
 
-  const [items, total] = await Promise.all([
+  const [items, total, dueContacts] = await Promise.all([
     listContacts(query),
     countContacts(),
+    // The "time to get in touch" block is hidden while searching
+    query ? null : listDueContacts(),
   ]);
   const added = items.find((contact) => contact.id === addedId);
 
@@ -48,6 +51,8 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
         </StatusNotice>
       )}
       {deletedName && <StatusNotice>Контакт «{deletedName}» удалён.</StatusNotice>}
+
+      {dueContacts && <DueContacts contacts={dueContacts} />}
 
       <Card>
         <CardContent className="grid gap-4 lg:gap-5">

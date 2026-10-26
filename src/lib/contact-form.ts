@@ -1,4 +1,7 @@
-export const CONTACT_FIELDS = [
+import type { ContactFrequency } from "@/db/schema";
+import { isContactFrequency } from "@/lib/keep-in-touch";
+
+const TEXT_FIELDS = [
   "name",
   "about",
   "howWeMet",
@@ -7,9 +10,13 @@ export const CONTACT_FIELDS = [
   "notes",
 ] as const;
 
+type TextField = (typeof TEXT_FIELDS)[number];
+
+export const CONTACT_FIELDS = [...TEXT_FIELDS, "contactFrequency"] as const;
+
 export type ContactField = (typeof CONTACT_FIELDS)[number];
 
-// Raw form values as the user typed them
+// Raw form values as the user typed them; an empty frequency is "not set"
 export type ContactValues = Record<ContactField, string>;
 
 // Values ready to be stored: optional fields become null when empty
@@ -20,6 +27,7 @@ export type ContactInput = {
   phone: string | null;
   email: string | null;
   notes: string | null;
+  contactFrequency: ContactFrequency | null;
 };
 
 export type ContactFormState = {
@@ -35,9 +43,10 @@ export const EMPTY_CONTACT_VALUES: ContactValues = {
   phone: "",
   email: "",
   notes: "",
+  contactFrequency: "",
 };
 
-const MAX_LENGTH: Record<ContactField, number> = {
+const MAX_LENGTH: Record<TextField, number> = {
   name: 200,
   about: 500,
   howWeMet: 500,
@@ -67,7 +76,7 @@ export function parseContactForm(formData: FormData): ParseResult {
 
   const errors: Partial<Record<ContactField, string>> = {};
 
-  for (const field of CONTACT_FIELDS) {
+  for (const field of TEXT_FIELDS) {
     if (values[field].length > MAX_LENGTH[field]) {
       errors[field] = `Слишком длинно: максимум ${MAX_LENGTH[field]} символов`;
     }
@@ -80,6 +89,11 @@ export function parseContactForm(formData: FormData): ParseResult {
   }
   if (values.email && !errors.email && !EMAIL_PATTERN.test(values.email)) {
     errors.email = "Похоже, в адресе почты ошибка";
+  }
+  // Can't happen through the select, only in a forged request
+  const { contactFrequency } = values;
+  if (contactFrequency && !isContactFrequency(contactFrequency)) {
+    errors.contactFrequency = "Выберите вариант из списка";
   }
 
   if (Object.keys(errors).length > 0) {
@@ -96,6 +110,9 @@ export function parseContactForm(formData: FormData): ParseResult {
       phone: values.phone || null,
       email: values.email || null,
       notes: values.notes || null,
+      contactFrequency: isContactFrequency(contactFrequency)
+        ? contactFrequency
+        : null,
     },
   };
 }

@@ -2,8 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createContact, deleteContact, updateContact } from "@/db/contacts";
+import {
+  createContact,
+  deleteContact,
+  markContacted,
+  unmarkContacted,
+  updateContact,
+} from "@/db/contacts";
 import { parseContactForm, type ContactFormState } from "@/lib/contact-form";
+import { isValidContactedMark } from "@/lib/keep-in-touch";
 
 export async function createContactAction(
   _prevState: ContactFormState,
@@ -58,4 +65,40 @@ export async function deleteContactAction(id: number) {
   }
   // Back to the list, which confirms the deletion by name
   redirect(`/?deleted=${encodeURIComponent(name)}`);
+}
+
+export type ContactedMark = { previous: string | null; markedAt: string };
+
+// The "contacted today" tick. Returns what's needed to undo it, or null if
+// there was nothing to mark (the contact has no frequency or is gone)
+export async function markContactedAction(
+  id: number,
+): Promise<ContactedMark | null> {
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error(`Invalid contact id: ${id}`);
+  }
+
+  const mark = await markContacted(id);
+  // Only the contact page: the block on the home page shows ticks itself
+  revalidatePath(`/contacts/${id}`);
+  return mark;
+}
+
+// Undoes the tick; returns false if the contact was marked again since
+export async function unmarkContactedAction(
+  id: number,
+  markedAt: string,
+  previous: string | null,
+) {
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error(`Invalid contact id: ${id}`);
+  }
+  // The undo data comes from the browser, so it's checked
+  if (!isValidContactedMark(markedAt, previous)) {
+    throw new Error(`Invalid undo data: ${markedAt}, ${previous}`);
+  }
+
+  const undone = await unmarkContacted(id, markedAt, previous);
+  revalidatePath(`/contacts/${id}`);
+  return undone;
 }

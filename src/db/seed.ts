@@ -5,7 +5,11 @@ import { fakerRU as faker } from "@faker-js/faker";
 import { count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { contacts, type NewContact } from "./schema.ts";
+import {
+  contacts,
+  type ContactFrequency,
+  type NewContact,
+} from "./schema.ts";
 
 // @next/env is CommonJS whose exports Node can't import by name; require
 // loads it the same way under tsx and under Node's own TypeScript support
@@ -15,6 +19,14 @@ const { loadEnvConfig } = createRequire(import.meta.url)(
 
 const SEED_COUNT = 1000;
 const BATCH_SIZE = 200;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const FREQUENCIES: { weight: number; value: ContactFrequency }[] = [
+  { weight: 25, value: "week" },
+  { weight: 40, value: "month" },
+  { weight: 20, value: "quarter" },
+  { weight: 15, value: "year" },
+];
 
 const ROLES = [
   "Коллега по прошлой работе",
@@ -171,6 +183,37 @@ function makeContact(now: Date): NewContact {
   };
 }
 
+// About every tenth contact gets a keep-in-touch frequency with dates in the
+// last months: some are already in the "time to get in touch" block, some
+// not yet. Runs after all contacts are made, so they stay the same as before
+function addKeepInTouch(rows: NewContact[], now: Date) {
+  const recent = new Date(now.getTime() - 120 * DAY_MS);
+  const weekAgo = new Date(now.getTime() - 7 * DAY_MS);
+  let dueToday = 0;
+
+  for (const row of rows) {
+    if (!faker.datatype.boolean(0.1)) continue;
+    const createdAt = row.createdAt as Date;
+
+    // A couple of contacts are due exactly today: in touch a week ago
+    if (dueToday < 2 && createdAt <= weekAgo) {
+      dueToday++;
+      row.contactFrequency = "week";
+      row.frequencySetAt = weekAgo;
+      row.lastContactedAt = weekAgo;
+      continue;
+    }
+
+    const from = createdAt > recent ? createdAt : recent;
+    row.contactFrequency = faker.helpers.weightedArrayElement(FREQUENCIES);
+    row.frequencySetAt = faker.date.between({ from, to: now });
+    // The rest have no known contact yet: counted from frequencySetAt
+    row.lastContactedAt = faker.datatype.boolean(0.65)
+      ? faker.date.between({ from, to: now })
+      : null;
+  }
+}
+
 async function main() {
   loadEnvConfig(process.cwd());
   const url = process.env.DATABASE_URL;
@@ -196,6 +239,7 @@ async function main() {
     faker.seed(20261014);
     const now = new Date();
     const rows = Array.from({ length: SEED_COUNT }, () => makeContact(now));
+    addKeepInTouch(rows, now);
 
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       await db.insert(contacts).values(rows.slice(i, i + BATCH_SIZE));

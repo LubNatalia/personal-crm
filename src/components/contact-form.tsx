@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { ContactedTodayCheckbox } from "@/components/contacted-checkbox";
+import { GroupsField } from "@/components/groups-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +48,8 @@ export type KeepInTouchStatus = {
 type ContactFormProps = {
   action: ContactFormAction;
   initialValues: ContactValues;
+  // All groups, alphabetically
+  groups: { id: number; name: string }[];
   submitLabel: string;
   autoFocusName?: boolean;
   // Start every visit with a fresh form (used for "new contact")
@@ -76,6 +79,7 @@ export function ContactForm({ resetOnLeave, ...props }: ContactFormProps) {
 function ContactFormBody({
   action,
   initialValues,
+  groups,
   submitLabel,
   autoFocusName,
   secondaryAction,
@@ -179,6 +183,13 @@ function ContactFormBody({
           {keepInTouch && <KeepInTouchLines status={keepInTouch} />}
         </div>
       </div>
+
+      <GroupsField
+        groups={groups}
+        // The ticks live in the field itself; this is only where they start
+        initialCheckedIds={initialValues.groupIds}
+        error={errors.groupIds}
+      />
 
       <div className="grid gap-2">
         <Label htmlFor={fieldId("notes")}>Заметки</Label>

@@ -6,7 +6,9 @@ import { count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
+  contactGroups,
   contacts,
+  groups,
   type ContactFrequency,
   type NewContact,
 } from "./schema.ts";
@@ -117,6 +119,8 @@ const NOTES = [
   "Хочет собрать встречу выпускников, обещал помочь с организацией.",
 ];
 
+const GROUP_NAMES = ["Семья", "Друзья", "Знакомые", "Теннис", "Аналитики"];
+
 const EMAIL_DOMAINS = [
   "gmail.com",
   "yandex.ru",
@@ -214,6 +218,19 @@ function addKeepInTouch(rows: NewContact[], now: Date) {
   }
 }
 
+// Picks the groups of every contact: about 40% are in one group, 10% in two,
+// the rest in none. Runs after all contacts are made, so they stay the same
+// as before
+function pickGroups(contactIds: number[], groupIds: number[]) {
+  return contactIds.flatMap((contactId) => {
+    const roll = faker.number.float();
+    const amount = roll < 0.4 ? 1 : roll < 0.5 ? 2 : 0;
+    return faker.helpers
+      .arrayElements(groupIds, amount)
+      .map((groupId) => ({ contactId, groupId }));
+  });
+}
+
 async function main() {
   loadEnvConfig(process.cwd());
   const url = process.env.DATABASE_URL;
@@ -241,10 +258,34 @@ async function main() {
     const rows = Array.from({ length: SEED_COUNT }, () => makeContact(now));
     addKeepInTouch(rows, now);
 
+    const contactIds: number[] = [];
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      await db.insert(contacts).values(rows.slice(i, i + BATCH_SIZE));
+      const inserted = await db
+        .insert(contacts)
+        .values(rows.slice(i, i + BATCH_SIZE))
+        .returning({ id: contacts.id });
+      contactIds.push(...inserted.map((row) => row.id));
     }
     console.log(`Seeded ${rows.length} contacts.`);
+
+    // A group that already exists is not made twice
+    await db
+      .insert(groups)
+      .values(GROUP_NAMES.map((name) => ({ name })))
+      .onConflictDoNothing();
+    const seededGroupIds = (await db.select().from(groups))
+      .filter((group) =>
+        GROUP_NAMES.some((name) => name.toLowerCase() === group.name.toLowerCase()),
+      )
+      .map((group) => group.id);
+
+    const links = pickGroups(contactIds, seededGroupIds);
+    for (let i = 0; i < links.length; i += BATCH_SIZE) {
+      await db.insert(contactGroups).values(links.slice(i, i + BATCH_SIZE));
+    }
+    console.log(
+      `Seeded ${seededGroupIds.length} groups, ${links.length} contact-group links.`,
+    );
   } finally {
     await sql.end();
   }

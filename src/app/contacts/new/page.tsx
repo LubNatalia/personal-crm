@@ -5,12 +5,15 @@ import { ContactForm } from "@/components/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { EMPTY_CONTACT_VALUES } from "@/lib/contact-form";
 import { createContactAction } from "@/app/actions";
+import { listGroups } from "@/db/groups";
 
 export const metadata: Metadata = {
   title: "Новый контакт — Личная CRM",
 };
 
-export default function NewContactPage() {
+export default async function NewContactPage() {
+  const groups = await listGroups();
+
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-5 lg:gap-6">
       <Link
@@ -33,6 +36,7 @@ export default function NewContactPage() {
         <CardContent>
           <ContactForm
             action={createContactAction}
+            groups={groups}
             initialValues={EMPTY_CONTACT_VALUES}
             submitLabel="Добавить контакт"
             autoFocusName

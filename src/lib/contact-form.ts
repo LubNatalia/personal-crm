@@ -16,8 +16,13 @@ export const CONTACT_FIELDS = [...TEXT_FIELDS, "contactFrequency"] as const;
 
 export type ContactField = (typeof CONTACT_FIELDS)[number];
 
-// Raw form values as the user typed them; an empty frequency is "not set"
-export type ContactValues = Record<ContactField, string>;
+// Raw form values as the user typed them; an empty frequency is "not set".
+// groupIds are the ticked groups as they came from the form
+export type ContactValues = Record<ContactField, string> & {
+  groupIds: string[];
+};
+
+export type ContactErrors = Partial<Record<ContactField | "groupIds", string>>;
 
 // Values ready to be stored: optional fields become null when empty
 export type ContactInput = {
@@ -28,12 +33,14 @@ export type ContactInput = {
   email: string | null;
   notes: string | null;
   contactFrequency: ContactFrequency | null;
+  // Ids of the groups the contact is in, without repeats
+  groupIds: number[];
 };
 
 export type ContactFormState = {
   status: "idle" | "error" | "saved";
   values?: ContactValues;
-  errors?: Partial<Record<ContactField, string>>;
+  errors?: ContactErrors;
 };
 
 export const EMPTY_CONTACT_VALUES: ContactValues = {
@@ -44,6 +51,7 @@ export const EMPTY_CONTACT_VALUES: ContactValues = {
   email: "",
   notes: "",
   contactFrequency: "",
+  groupIds: [],
 };
 
 const MAX_LENGTH: Record<TextField, number> = {
@@ -55,26 +63,35 @@ const MAX_LENGTH: Record<TextField, number> = {
   notes: 20000,
 };
 
+// Group ids are Postgres integers: positive, at most 2^31 - 1
+const GROUP_ID_PATTERN = /^[1-9][0-9]{0,9}$/;
+const MAX_GROUP_ID = 2147483647;
+
+function isGroupId(value: string) {
+  return GROUP_ID_PATTERN.test(value) && Number(value) <= MAX_GROUP_ID;
+}
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[0-9+()\-\s]+$/;
 
 type ParseResult =
   | { ok: true; values: ContactValues; data: ContactInput }
-  | {
-      ok: false;
-      values: ContactValues;
-      errors: Partial<Record<ContactField, string>>;
-    };
+  | { ok: false; values: ContactValues; errors: ContactErrors };
 
 export function parseContactForm(formData: FormData): ParseResult {
-  const values = Object.fromEntries(
-    CONTACT_FIELDS.map((field) => {
-      const raw = formData.get(field);
-      return [field, typeof raw === "string" ? raw.trim() : ""];
-    }),
-  ) as ContactValues;
+  const values = {
+    ...Object.fromEntries(
+      CONTACT_FIELDS.map((field) => {
+        const raw = formData.get(field);
+        return [field, typeof raw === "string" ? raw.trim() : ""];
+      }),
+    ),
+    groupIds: formData
+      .getAll("groupIds")
+      .map((raw) => (typeof raw === "string" ? raw.trim() : "")),
+  } as ContactValues;
 
-  const errors: Partial<Record<ContactField, string>> = {};
+  const errors: ContactErrors = {};
 
   for (const field of TEXT_FIELDS) {
     if (values[field].length > MAX_LENGTH[field]) {
@@ -96,6 +113,11 @@ export function parseContactForm(formData: FormData): ParseResult {
     errors.contactFrequency = "Выберите вариант из списка";
   }
 
+  // Can't happen through the checkboxes, only in a forged request
+  if (!values.groupIds.every(isGroupId)) {
+    errors.groupIds = "Выберите группы из списка";
+  }
+
   if (Object.keys(errors).length > 0) {
     return { ok: false, values, errors };
   }
@@ -113,6 +135,7 @@ export function parseContactForm(formData: FormData): ParseResult {
       contactFrequency: isContactFrequency(contactFrequency)
         ? contactFrequency
         : null,
+      groupIds: [...new Set(values.groupIds.map(Number))],
     },
   };
 }

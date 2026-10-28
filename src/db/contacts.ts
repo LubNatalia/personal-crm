@@ -7,7 +7,9 @@ import {
   eq,
   getTableColumns,
   ilike,
+  inArray,
   isNotNull,
+  notInArray,
   sql,
   type SQL,
 } from "drizzle-orm";
@@ -19,7 +21,12 @@ import {
 } from "@/lib/keep-in-touch";
 import { hasNewNoteLines } from "@/lib/notes";
 import { getDb } from "./index";
-import { contacts, type ContactFrequency } from "./schema";
+import {
+  contactGroups,
+  contacts,
+  groups,
+  type ContactFrequency,
+} from "./schema";
 
 // Escape LIKE wildcards so the user's text is matched literally
 function escapeLikePattern(value: string) {
@@ -82,7 +89,29 @@ export async function listDueContacts() {
     );
 }
 
-export async function listContacts(nameQuery: string) {
+// Ids of the groups the contact is in, as an array in one column
+const groupIdsField = sql<number[]>`array(
+  select ${contactGroups.groupId} from ${contactGroups}
+  where ${contactGroups.contactId} = ${contacts.id}
+)`;
+
+// Only the contacts of one group; no condition when there is no group
+function inGroup(groupId: number | null | undefined) {
+  return groupId == null
+    ? undefined
+    : sql`exists (
+        select 1 from ${contactGroups}
+        where ${contactGroups.contactId} = ${contacts.id}
+          and ${contactGroups.groupId} = ${groupId}
+      )`;
+}
+
+// Group names are put on the labels by the page, from the list of groups:
+// a row carries only ids
+export async function listContacts(
+  nameQuery: string,
+  groupId?: number | null,
+) {
   return getDb()
     .select({
       id: contacts.id,
@@ -90,44 +119,103 @@ export async function listContacts(nameQuery: string) {
       about: contacts.about,
       phone: contacts.phone,
       email: contacts.email,
+      groupIds: groupIdsField,
     })
     .from(contacts)
     .where(
-      nameQuery
-        ? ilike(contacts.name, `%${escapeLikePattern(nameQuery)}%`)
-        : undefined,
+      and(
+        nameQuery
+          ? ilike(contacts.name, `%${escapeLikePattern(nameQuery)}%`)
+          : undefined,
+        inGroup(groupId),
+      ),
     )
     // ICU Russian collation: correct alphabetical order including "Ё"
     .orderBy(sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id));
 }
 
-export async function countContacts() {
-  const [row] = await getDb().select({ value: count() }).from(contacts);
+// All contacts, or the ones in a group
+export async function countContacts(groupId?: number | null) {
+  const [row] = await getDb()
+    .select({ value: count() })
+    .from(contacts)
+    .where(inGroup(groupId));
   return row.value;
 }
 
 export async function getContact(id: number) {
   const [row] = await getDb()
-    .select({ ...getTableColumns(contacts), ...dueFields })
+    .select({
+      ...getTableColumns(contacts),
+      ...dueFields,
+      groupIds: groupIdsField,
+    })
     .from(contacts)
     .where(eq(contacts.id, id));
   return row ?? null;
 }
 
-export async function createContact(input: ContactInput) {
-  const [row] = await getDb()
-    .insert(contacts)
-    .values({
-      ...input,
-      // Notes on a new contact count as being in touch on the day it's added
-      lastContactedAt: input.notes ? sql`now()` : null,
-      frequencySetAt: input.contactFrequency ? sql`now()` : null,
-    })
-    .returning({ id: contacts.id });
-  return row.id;
+type Transaction = Parameters<
+  Parameters<ReturnType<typeof getDb>["transaction"]>[0]
+>[0];
+
+// Makes the contact's groups exactly `groupIds`: links not in the list are
+// removed, new ones added. A group deleted meanwhile (e.g. in another tab) is
+// skipped without an error, the rest is saved
+async function saveContactGroups(
+  tx: Transaction,
+  contactId: number,
+  groupIds: number[],
+) {
+  await tx
+    .delete(contactGroups)
+    .where(
+      and(
+        eq(contactGroups.contactId, contactId),
+        groupIds.length > 0
+          ? notInArray(contactGroups.groupId, groupIds)
+          : undefined,
+      ),
+    );
+  if (groupIds.length === 0) {
+    return;
+  }
+  await tx
+    .insert(contactGroups)
+    .select(
+      tx
+        .select({
+          contactId: sql<number>`${contactId}::integer`.as("contact_id"),
+          groupId: groups.id,
+        })
+        .from(groups)
+        .where(inArray(groups.id, groupIds))
+        // Keeps the groups from being deleted until this transaction ends
+        .for("key share"),
+    )
+    .onConflictDoNothing();
 }
 
-export async function updateContact(id: number, input: ContactInput) {
+export async function createContact({ groupIds, ...input }: ContactInput) {
+  return getDb().transaction(async (tx) => {
+    const [row] = await tx
+      .insert(contacts)
+      .values({
+        ...input,
+        // Notes on a new contact count as being in touch on the day it's added
+        lastContactedAt: input.notes ? sql`now()` : null,
+        frequencySetAt: input.contactFrequency ? sql`now()` : null,
+      })
+      .returning({ id: contacts.id });
+    await saveContactGroups(tx, row.id, groupIds);
+    return row.id;
+  });
+}
+
+export async function updateContact(
+  id: number,
+  { groupIds, ...input }: ContactInput,
+) {
   return getDb().transaction(async (tx) => {
     // Locks the row until the end of the transaction, so a save from
     // another tab can't slip in between reading and writing
@@ -164,6 +252,7 @@ export async function updateContact(id: number, input: ContactInput) {
         frequencySetAt,
       })
       .where(eq(contacts.id, id));
+    await saveContactGroups(tx, id, groupIds);
     return true;
   });
 }

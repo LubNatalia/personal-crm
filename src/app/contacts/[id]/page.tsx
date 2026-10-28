@@ -5,6 +5,7 @@ import { ContactForm, type KeepInTouchStatus } from "@/components/contact-form";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getContact } from "@/db/contacts";
+import { listGroups } from "@/db/groups";
 import {
   APP_TIME_ZONE,
   formatDay,
@@ -30,7 +31,10 @@ export default async function ContactPage({
     notFound();
   }
 
-  const contact = await getContact(contactId);
+  const [contact, groups] = await Promise.all([
+    getContact(contactId),
+    listGroups(),
+  ]);
   if (!contact) {
     notFound();
   }
@@ -73,6 +77,7 @@ export default async function ContactPage({
         <CardContent>
           <ContactForm
             action={updateContactAction.bind(null, contact.id)}
+            groups={groups}
             initialValues={{
               name: contact.name,
               about: contact.about ?? "",
@@ -81,6 +86,7 @@ export default async function ContactPage({
               email: contact.email ?? "",
               notes: contact.notes ?? "",
               contactFrequency: contact.contactFrequency ?? "",
+              groupIds: contact.groupIds.map(String),
             }}
             submitLabel="Сохранить"
             keepInTouch={keepInTouch}

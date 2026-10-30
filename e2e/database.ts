@@ -1,5 +1,7 @@
 import { loadEnvConfig } from "@next/env";
+import postgres, { type Sql } from "postgres";
 import { e2eDatabaseUrl } from "../src/test/database-url.mts";
+import { truncateAllTables } from "../src/test/test-database";
 
 // The same env files as Next.js; run from the project root
 loadEnvConfig(process.cwd(), true);
@@ -16,3 +18,22 @@ export const SEEDED_CONTACTS = [
   { name: "Анна Смирнова", about: "Соседка" },
   { name: "Борис Петров", about: "Коллега" },
 ];
+
+// Runs `work` with a connection to the e2e database
+export async function withDatabase<T>(work: (sql: Sql) => Promise<T>) {
+  const sql = postgres(databaseUrl, { max: 1, onnotice: () => {} });
+  try {
+    return await work(sql);
+  } finally {
+    await sql.end();
+  }
+}
+
+// Empties the database and puts back the known contacts, so every test
+// starts from the same data
+export async function resetDatabase() {
+  await withDatabase(async (sql) => {
+    await truncateAllTables(sql);
+    await sql`insert into contacts ${sql(SEEDED_CONTACTS, "name", "about")}`;
+  });
+}

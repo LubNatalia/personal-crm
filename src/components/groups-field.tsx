@@ -1,12 +1,7 @@
 "use client";
 
 import { Check, Plus } from "lucide-react";
-import {
-  useId,
-  useState,
-  useTransition,
-  type KeyboardEvent,
-} from "react";
+import { useId, useState, useTransition, type KeyboardEvent } from "react";
 import { createGroupAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -25,7 +25,8 @@ export async function prepareTestDatabase(url: string) {
     onnotice: () => {},
   });
   try {
-    const existing = await admin`select 1 from pg_database where datname = ${name}`;
+    const existing =
+      await admin`select 1 from pg_database where datname = ${name}`;
     if (existing.length === 0) {
       await admin.unsafe(`create database "${name.replaceAll('"', '""')}"`);
     }

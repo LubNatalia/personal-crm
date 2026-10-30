@@ -95,7 +95,9 @@ describe("updateContact: groups", () => {
     const friends = await makeGroup("Друзья");
     const tennis = await makeGroup("Теннис");
     const family = await makeGroup("Семья");
-    const id = await createContact(contactInput({ groupIds: [friends, tennis] }));
+    const id = await createContact(
+      contactInput({ groupIds: [friends, tennis] }),
+    );
 
     const updated = await updateContact(
       id,
@@ -150,9 +152,9 @@ describe("updateContact: groups", () => {
   it("returns false for a contact that does not exist, and adds no links", async () => {
     const friends = await makeGroup("Друзья");
 
-    expect(await updateContact(999, contactInput({ groupIds: [friends] }))).toBe(
-      false,
-    );
+    expect(
+      await updateContact(999, contactInput({ groupIds: [friends] })),
+    ).toBe(false);
     expect(await getDb().select().from(contactGroups)).toEqual([]);
   });
 
@@ -179,7 +181,8 @@ describe("deleteContact: groups", () => {
     expect(await deleteContact(id)).toBe("Анна");
 
     expect(await getDb().select().from(contactGroups)).toEqual([]);
-    const remaining = await getDb().$client`select count(*)::int as count from groups`;
+    const remaining = await getDb()
+      .$client`select count(*)::int as count from groups`;
     expect(remaining[0].count).toBe(1);
   });
 });

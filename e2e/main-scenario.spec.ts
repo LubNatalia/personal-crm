@@ -30,7 +30,9 @@ test("open the list, add a contact, find it and add a note", async ({
 
   await test.step("open: the list shows all contacts", async () => {
     await page.goto("/");
-    await expect(listSummary(page, `Всего: ${SEEDED_CONTACTS.length}`)).toBeVisible();
+    await expect(
+      listSummary(page, `Всего: ${SEEDED_CONTACTS.length}`),
+    ).toBeVisible();
     for (const contact of SEEDED_CONTACTS) {
       await expect(contactLink(page, contact.name)).toBeVisible();
     }
@@ -43,24 +45,34 @@ test("open the list, add a contact, find it and add a note", async ({
     ).toBeVisible();
 
     await page.getByRole("textbox", { name: "Имя" }).fill(NEW_CONTACT.name);
-    await page.getByRole("textbox", { name: "Кто это" }).fill(NEW_CONTACT.about);
-    await page.getByRole("textbox", { name: "Телефон" }).fill(NEW_CONTACT.phone);
+    await page
+      .getByRole("textbox", { name: "Кто это" })
+      .fill(NEW_CONTACT.about);
+    await page
+      .getByRole("textbox", { name: "Телефон" })
+      .fill(NEW_CONTACT.phone);
     await page.getByRole("button", { name: "Добавить контакт" }).click();
 
     await expect(page).toHaveURL(/\/\?added=\d+$/);
     await expect(
-      page.getByRole("status").filter({ hasText: `Контакт «${NEW_CONTACT.name}» добавлен` }),
+      page
+        .getByRole("status")
+        .filter({ hasText: `Контакт «${NEW_CONTACT.name}» добавлен` }),
     ).toBeVisible();
     await expect(listSummary(page, `Всего: ${allNames.length}`)).toBeVisible();
     await expect(contactLink(page, NEW_CONTACT.name)).toBeVisible();
   });
 
   await test.step("find the contact by name and open the card", async () => {
-    await page.getByRole("searchbox", { name: "Поиск по имени" }).fill("козлова");
+    await page
+      .getByRole("searchbox", { name: "Поиск по имени" })
+      .fill("козлова");
     await page.getByRole("button", { name: "Найти" }).click();
 
     await expect(page).toHaveURL(/[?&]q=/);
-    await expect(listSummary(page, `Найдено: 1 из ${allNames.length}`)).toBeVisible();
+    await expect(
+      listSummary(page, `Найдено: 1 из ${allNames.length}`),
+    ).toBeVisible();
     for (const contact of SEEDED_CONTACTS) {
       await expect(contactLink(page, contact.name)).toBeHidden();
     }
@@ -84,7 +96,9 @@ test("open the list, add a contact, find it and add a note", async ({
     await expect(
       page.getByRole("heading", { level: 1, name: NEW_CONTACT.name }),
     ).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Заметки" })).toHaveValue(NOTE);
+    await expect(page.getByRole("textbox", { name: "Заметки" })).toHaveValue(
+      NOTE,
+    );
     await expect(page.getByRole("textbox", { name: "Кто это" })).toHaveValue(
       NEW_CONTACT.about,
     );
@@ -98,15 +112,17 @@ test("open the list, add a contact, find it and add a note", async ({
       const otherPage = await other.newPage();
       await otherPage.goto(new URL("/", page.url()).toString());
 
-      await expect(listSummary(otherPage, `Всего: ${allNames.length}`)).toBeVisible();
+      await expect(
+        listSummary(otherPage, `Всего: ${allNames.length}`),
+      ).toBeVisible();
       for (const name of allNames) {
         await expect(contactLink(otherPage, name)).toBeVisible();
       }
 
       await contactLink(otherPage, NEW_CONTACT.name).click();
-      await expect(otherPage.getByRole("textbox", { name: "Заметки" })).toHaveValue(
-        NOTE,
-      );
+      await expect(
+        otherPage.getByRole("textbox", { name: "Заметки" }),
+      ).toHaveValue(NOTE);
     } finally {
       await other.close();
     }

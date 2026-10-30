@@ -157,7 +157,9 @@ function ContactFormBody({
           error={errors.email}
         />
         <div className="grid content-start gap-2">
-          <Label htmlFor={fieldId("contactFrequency")}>Как часто общаться</Label>
+          <Label htmlFor={fieldId("contactFrequency")}>
+            Как часто общаться
+          </Label>
           <NativeSelect
             // A select doesn't pick up a new defaultValue, so after a save it
             // would be reset to the first one. Remount it with the new value
@@ -178,7 +180,10 @@ function ContactFormBody({
             ))}
           </NativeSelect>
           {errors.contactFrequency && (
-            <FieldError id={frequencyErrorId} message={errors.contactFrequency} />
+            <FieldError
+              id={frequencyErrorId}
+              message={errors.contactFrequency}
+            />
           )}
           {keepInTouch && <KeepInTouchLines status={keepInTouch} />}
         </div>
@@ -212,11 +217,18 @@ function ContactFormBody({
             {NOTES_HINT}
           </p>
         )}
-        {errors.notes && <FieldError id={notesErrorId} message={errors.notes} />}
+        {errors.notes && (
+          <FieldError id={notesErrorId} message={errors.notes} />
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 lg:gap-4">
-        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={pending}
+          className="w-full sm:w-auto"
+        >
           {pending ? "Сохраняю…" : submitLabel}
         </Button>
         {!pending && showResult && state.status === "saved" && (
@@ -229,7 +241,10 @@ function ContactFormBody({
           </p>
         )}
         {!pending && showResult && state.status === "error" && (
-          <p role="alert" className="text-15 font-semibold text-coral-700 lg:text-16">
+          <p
+            role="alert"
+            className="text-15 font-semibold text-coral-700 lg:text-16"
+          >
             Не сохранено: исправьте поля, отмеченные красным
           </p>
         )}

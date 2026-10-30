@@ -50,8 +50,7 @@ export function DeleteContactButton({ id, name }: DeleteContactButtonProps) {
         <AlertDialogHeader>
           <AlertDialogTitle>Удалить контакт?</AlertDialogTitle>
           <AlertDialogDescription>
-            Контакт «{name}» и заметки о нём будут удалены. Это нельзя
-            отменить.
+            Контакт «{name}» и заметки о нём будут удалены. Это нельзя отменить.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

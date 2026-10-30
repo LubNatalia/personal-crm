@@ -66,7 +66,9 @@ export default async function ContactPage({
       <div className="flex items-center gap-4 lg:gap-5">
         <ContactAvatar name={contact.name} size="lg" />
         <div className="grid min-w-0 gap-1.5">
-          <h1 className="text-h2 font-extrabold wrap-break-word">{contact.name}</h1>
+          <h1 className="text-h2 font-extrabold wrap-break-word">
+            {contact.name}
+          </h1>
           <p className="text-14 text-ink-muted lg:text-15">
             Добавлен {dateFormat.format(contact.createdAt)} · изменён{" "}
             {dateFormat.format(contact.updatedAt)}

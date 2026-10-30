@@ -10,9 +10,12 @@ export const metadata: Metadata = {
   title: "Группы — Личная CRM",
 };
 
-export default async function GroupsPage({ searchParams }: PageProps<"/groups">) {
+export default async function GroupsPage({
+  searchParams,
+}: PageProps<"/groups">) {
   const params = await searchParams;
-  const deletedName = typeof params.deleted === "string" ? params.deleted : null;
+  const deletedName =
+    typeof params.deleted === "string" ? params.deleted : null;
 
   const groups = await listGroupsWithCounts();
 
@@ -26,7 +29,9 @@ export default async function GroupsPage({ searchParams }: PageProps<"/groups">)
       </Link>
       <h1 className="text-h2 font-extrabold">Группы</h1>
 
-      {deletedName && <StatusNotice>Группа «{deletedName}» удалена.</StatusNotice>}
+      {deletedName && (
+        <StatusNotice>Группа «{deletedName}» удалена.</StatusNotice>
+      )}
 
       <Card>
         <CardContent className="grid gap-5 lg:gap-6">

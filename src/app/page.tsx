@@ -46,8 +46,10 @@ function homeHref(query: string, groupId: number | null) {
 export default async function ContactsPage({ searchParams }: PageProps<"/">) {
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
-  const addedId = typeof params.added === "string" ? Number(params.added) : null;
-  const deletedName = typeof params.deleted === "string" ? params.deleted : null;
+  const addedId =
+    typeof params.added === "string" ? Number(params.added) : null;
+  const deletedName =
+    typeof params.deleted === "string" ? params.deleted : null;
 
   // A group that is not there (deleted, an old bookmark) means "all"
   const groups = await listGroups();
@@ -95,7 +97,9 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
           Контакт «{added.name}» добавлен. Он выделен в списке ниже.
         </StatusNotice>
       )}
-      {deletedName && <StatusNotice>Контакт «{deletedName}» удалён.</StatusNotice>}
+      {deletedName && (
+        <StatusNotice>Контакт «{deletedName}» удалён.</StatusNotice>
+      )}
 
       {dueContacts && <DueContacts contacts={dueContacts} />}
 
@@ -166,8 +170,12 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Имя</TableHead>
-                  <TableHead className="hidden md:table-cell">Кто это</TableHead>
-                  <TableHead className="hidden sm:table-cell">Телефон</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Кто это
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    Телефон
+                  </TableHead>
                   <TableHead className="hidden lg:table-cell">Почта</TableHead>
                 </TableRow>
               </TableHeader>
@@ -179,7 +187,9 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
                     <Row
                       key={contact.id}
                       className={
-                        isAdded ? "bg-lavender-100 hover:bg-lavender-100" : undefined
+                        isAdded
+                          ? "bg-lavender-100 hover:bg-lavender-100"
+                          : undefined
                       }
                     >
                       <TableCell>
@@ -192,7 +202,9 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
                         </Link>
                         <GroupLabels
                           names={groups
-                            .filter((item) => contact.groupIds.includes(item.id))
+                            .filter((item) =>
+                              contact.groupIds.includes(item.id),
+                            )
                             .map((item) => item.name)}
                         />
                       </TableCell>

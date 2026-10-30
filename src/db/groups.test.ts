@@ -59,12 +59,18 @@ describe("createGroup", () => {
     ["Теннис", "ТЕННИС"],
     ["Ёжики", "ёжики"],
     ["ёжики", "Ёжики"],
-  ])("says the group exists when %s is taken and %s is added", async (existing, added) => {
-    await createGroup(existing);
+  ])(
+    "says the group exists when %s is taken and %s is added",
+    async (existing, added) => {
+      await createGroup(existing);
 
-    expect(await createGroup(added)).toEqual({ ok: false, reason: "duplicate" });
-    expect(await listGroups()).toHaveLength(1);
-  });
+      expect(await createGroup(added)).toEqual({
+        ok: false,
+        reason: "duplicate",
+      });
+      expect(await listGroups()).toHaveLength(1);
+    },
+  );
 });
 
 describe("listGroups", () => {
@@ -165,7 +171,9 @@ describe("listGroupsWithCounts", () => {
     await makeContact("Борис", [tennis]);
 
     const groups = await listGroupsWithCounts();
-    expect(groups.map(({ name, contactCount }) => [name, contactCount])).toEqual([
+    expect(
+      groups.map(({ name, contactCount }) => [name, contactCount]),
+    ).toEqual([
       ["Аналитики", 0],
       ["Семья", 1],
       ["Теннис", 2],

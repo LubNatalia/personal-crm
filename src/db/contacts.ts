@@ -79,9 +79,7 @@ export async function listDueContacts() {
       overdueDays: sql<number>`${overdueDays}`,
     })
     .from(contacts)
-    .where(
-      and(isNotNull(contacts.contactFrequency), sql`${overdueDays} >= 0`),
-    )
+    .where(and(isNotNull(contacts.contactFrequency), sql`${overdueDays} >= 0`))
     .orderBy(
       desc(overdueDays),
       sql`${contacts.name} collate "ru-x-icu"`,
@@ -108,30 +106,29 @@ function inGroup(groupId: number | null | undefined) {
 
 // Group names are put on the labels by the page, from the list of groups:
 // a row carries only ids
-export async function listContacts(
-  nameQuery: string,
-  groupId?: number | null,
-) {
-  return getDb()
-    .select({
-      id: contacts.id,
-      name: contacts.name,
-      about: contacts.about,
-      phone: contacts.phone,
-      email: contacts.email,
-      groupIds: groupIdsField,
-    })
-    .from(contacts)
-    .where(
-      and(
-        nameQuery
-          ? ilike(contacts.name, `%${escapeLikePattern(nameQuery)}%`)
-          : undefined,
-        inGroup(groupId),
-      ),
-    )
-    // ICU Russian collation: correct alphabetical order including "Ё"
-    .orderBy(sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id));
+export async function listContacts(nameQuery: string, groupId?: number | null) {
+  return (
+    getDb()
+      .select({
+        id: contacts.id,
+        name: contacts.name,
+        about: contacts.about,
+        phone: contacts.phone,
+        email: contacts.email,
+        groupIds: groupIdsField,
+      })
+      .from(contacts)
+      .where(
+        and(
+          nameQuery
+            ? ilike(contacts.name, `%${escapeLikePattern(nameQuery)}%`)
+            : undefined,
+          inGroup(groupId),
+        ),
+      )
+      // ICU Russian collation: correct alphabetical order including "Ё"
+      .orderBy(sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id))
+  );
 }
 
 // All contacts, or the ones in a group
@@ -259,7 +256,9 @@ export async function updateContact(
 
 // Exact timestamp for undoing a mark: microseconds are lost in a JS Date
 function exactTimestamp(column: typeof contacts.lastContactedAt) {
-  return sql<string | null>`to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+  return sql<
+    string | null
+  >`to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 }
 
 // Marks that we were in touch today. Returns what's needed to undo it, or

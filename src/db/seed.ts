@@ -131,10 +131,39 @@ const EMAIL_DOMAINS = [
 ];
 
 const TRANSLIT: Record<string, string> = {
-  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z",
-  и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r",
-  с: "s", т: "t", у: "u", ф: "f", х: "kh", ц: "ts", ч: "ch", ш: "sh",
-  щ: "shch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+  а: "a",
+  б: "b",
+  в: "v",
+  г: "g",
+  д: "d",
+  е: "e",
+  ё: "e",
+  ж: "zh",
+  з: "z",
+  и: "i",
+  й: "y",
+  к: "k",
+  л: "l",
+  м: "m",
+  н: "n",
+  о: "o",
+  п: "p",
+  р: "r",
+  с: "s",
+  т: "t",
+  у: "u",
+  ф: "f",
+  х: "kh",
+  ц: "ts",
+  ч: "ch",
+  ш: "sh",
+  щ: "shch",
+  ъ: "",
+  ы: "y",
+  ь: "",
+  э: "e",
+  ю: "yu",
+  я: "ya",
 };
 
 function transliterate(value: string) {
@@ -173,7 +202,9 @@ function makeContact(now: Date): NewContact {
 
   return {
     name: `${firstName} ${lastName}`,
-    about: faker.datatype.boolean(0.9) ? faker.helpers.arrayElement(ROLES) : null,
+    about: faker.datatype.boolean(0.9)
+      ? faker.helpers.arrayElement(ROLES)
+      : null,
     howWeMet: faker.datatype.boolean(0.85)
       ? faker.helpers.arrayElement(HOW_WE_MET)
       : null,
@@ -246,9 +277,7 @@ async function main() {
       .select({ value: count() })
       .from(contacts);
     if (existing > 0) {
-      console.log(
-        `Seed skipped: contacts table already has ${existing} rows.`,
-      );
+      console.log(`Seed skipped: contacts table already has ${existing} rows.`);
       return;
     }
 
@@ -275,7 +304,9 @@ async function main() {
       .onConflictDoNothing();
     const seededGroupIds = (await db.select().from(groups))
       .filter((group) =>
-        GROUP_NAMES.some((name) => name.toLowerCase() === group.name.toLowerCase()),
+        GROUP_NAMES.some(
+          (name) => name.toLowerCase() === group.name.toLowerCase(),
+        ),
       )
       .map((group) => group.id);
 

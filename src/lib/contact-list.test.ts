@@ -4,13 +4,23 @@ import { formatEmptyListMessage, formatListSummary } from "./contact-list";
 describe("formatListSummary", () => {
   it("shows the total without a group and a search", () => {
     expect(
-      formatListSummary({ query: "", groupName: null, shown: 1000, total: 1000 }),
+      formatListSummary({
+        query: "",
+        groupName: null,
+        shown: 1000,
+        total: 1000,
+      }),
     ).toBe("Всего: 1000");
   });
 
   it("shows found of total when searching without a group", () => {
     expect(
-      formatListSummary({ query: "Ан", groupName: null, shown: 12, total: 1000 }),
+      formatListSummary({
+        query: "Ан",
+        groupName: null,
+        shown: 12,
+        total: 1000,
+      }),
     ).toBe("Найдено: 12 из 1000");
   });
 
@@ -22,7 +32,12 @@ describe("formatListSummary", () => {
 
   it("shows found of the group's size when searching in a group", () => {
     expect(
-      formatListSummary({ query: "Ан", groupName: "Теннис", shown: 2, total: 6 }),
+      formatListSummary({
+        query: "Ан",
+        groupName: "Теннис",
+        shown: 2,
+        total: 6,
+      }),
     ).toBe("Найдено: 2 из 6");
   });
 });

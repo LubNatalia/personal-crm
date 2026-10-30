@@ -3,7 +3,10 @@ import { formatContactCount, parseGroupName } from "./groups";
 
 describe("parseGroupName", () => {
   it("asks for a name when it is empty or only spaces", () => {
-    expect(parseGroupName("")).toEqual({ ok: false, error: "Укажите название" });
+    expect(parseGroupName("")).toEqual({
+      ok: false,
+      error: "Укажите название",
+    });
     expect(parseGroupName("   ")).toEqual({
       ok: false,
       error: "Укажите название",

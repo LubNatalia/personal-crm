@@ -48,7 +48,8 @@ describe("test database", () => {
 
         await expect(truncateAllTables(probe)).rejects.toThrow("_test");
 
-        const [{ count }] = await probe`select count(*)::int as count from keep`;
+        const [{ count }] =
+          await probe`select count(*)::int as count from keep`;
         expect(count).toBe(1);
       } finally {
         await probe.end();

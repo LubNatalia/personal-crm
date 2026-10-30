@@ -42,7 +42,7 @@ export async function listGroupsWithCounts() {
 }
 
 export type CreateGroupResult =
-  { ok: true; group: { id: number; name: string } }
+  | { ok: true; group: { id: number; name: string } }
   | { ok: false; reason: "duplicate" };
 
 // The name is expected to be checked already (parseGroupName). Uniqueness is

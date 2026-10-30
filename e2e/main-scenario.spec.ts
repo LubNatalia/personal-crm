@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { SEEDED_CONTACTS } from "./database";
+import { resetDatabase, SEEDED_CONTACTS } from "./database";
 
 // The main scenario from specs/01-продуктовая-идея.md. Selectors are by role:
 // Next.js keeps visited pages in the DOM hidden, and roles skip hidden copies
@@ -18,6 +18,9 @@ function contactLink(page: Page, name: string) {
 function listSummary(page: Page, text: string) {
   return page.getByText(text, { exact: true }).filter({ visible: true });
 }
+
+// Other test files change the data: start from the known contacts
+test.beforeAll(resetDatabase);
 
 test("open the list, add a contact, find it and add a note", async ({
   page,

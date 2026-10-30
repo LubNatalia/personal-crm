@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { ContactForm } from "@/components/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { EMPTY_CONTACT_VALUES } from "@/lib/contact-form";
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default async function NewContactPage() {
+  // Rendered on request: at build time there is no database to read groups
+  await connection();
   const groups = await listGroups();
 
   return (

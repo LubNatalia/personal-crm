@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { ContactedTodayCheckbox } from "@/components/contacted-checkbox";
+import { GroupsField } from "@/components/groups-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +48,8 @@ export type KeepInTouchStatus = {
 type ContactFormProps = {
   action: ContactFormAction;
   initialValues: ContactValues;
+  // All groups, alphabetically
+  groups: { id: number; name: string }[];
   submitLabel: string;
   autoFocusName?: boolean;
   // Start every visit with a fresh form (used for "new contact")
@@ -76,6 +79,7 @@ export function ContactForm({ resetOnLeave, ...props }: ContactFormProps) {
 function ContactFormBody({
   action,
   initialValues,
+  groups,
   submitLabel,
   autoFocusName,
   secondaryAction,
@@ -153,7 +157,9 @@ function ContactFormBody({
           error={errors.email}
         />
         <div className="grid content-start gap-2">
-          <Label htmlFor={fieldId("contactFrequency")}>Как часто общаться</Label>
+          <Label htmlFor={fieldId("contactFrequency")}>
+            Как часто общаться
+          </Label>
           <NativeSelect
             // A select doesn't pick up a new defaultValue, so after a save it
             // would be reset to the first one. Remount it with the new value
@@ -174,11 +180,21 @@ function ContactFormBody({
             ))}
           </NativeSelect>
           {errors.contactFrequency && (
-            <FieldError id={frequencyErrorId} message={errors.contactFrequency} />
+            <FieldError
+              id={frequencyErrorId}
+              message={errors.contactFrequency}
+            />
           )}
           {keepInTouch && <KeepInTouchLines status={keepInTouch} />}
         </div>
       </div>
+
+      <GroupsField
+        groups={groups}
+        // The ticks live in the field itself; this is only where they start
+        initialCheckedIds={initialValues.groupIds}
+        error={errors.groupIds}
+      />
 
       <div className="grid gap-2">
         <Label htmlFor={fieldId("notes")}>Заметки</Label>
@@ -201,11 +217,18 @@ function ContactFormBody({
             {NOTES_HINT}
           </p>
         )}
-        {errors.notes && <FieldError id={notesErrorId} message={errors.notes} />}
+        {errors.notes && (
+          <FieldError id={notesErrorId} message={errors.notes} />
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 lg:gap-4">
-        <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={pending}
+          className="w-full sm:w-auto"
+        >
           {pending ? "Сохраняю…" : submitLabel}
         </Button>
         {!pending && showResult && state.status === "saved" && (
@@ -218,7 +241,10 @@ function ContactFormBody({
           </p>
         )}
         {!pending && showResult && state.status === "error" && (
-          <p role="alert" className="text-15 font-semibold text-coral-700 lg:text-16">
+          <p
+            role="alert"
+            className="text-15 font-semibold text-coral-700 lg:text-16"
+          >
             Не сохранено: исправьте поля, отмеченные красным
           </p>
         )}

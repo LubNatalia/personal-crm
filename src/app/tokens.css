@@ -10,44 +10,44 @@
   --font-sans: var(--font-manrope), system-ui, sans-serif;
 
   /* Фон и текст */
-  --color-lavender-50: #F7F6FD;   /* surface-soft: плитки внутри белых блоков */
-  --color-lavender-100: #EEEBFA;  /* основной фон страницы, чипы */
-  --color-lavender-200: #D9D2F7;  /* подложка «стопки», плашка хранения, линия подвала */
-  --color-lavender-line: #E4E0F5; /* разделители строк в списке контактов */
-  --color-lavender-avatar: #E2DFEE; /* нейтральные аватары */
+  --color-lavender-50: #f7f6fd; /* surface-soft: плитки внутри белых блоков */
+  --color-lavender-100: #eeebfa; /* основной фон страницы, чипы */
+  --color-lavender-200: #d9d2f7; /* подложка «стопки», плашка хранения, линия подвала */
+  --color-lavender-line: #e4e0f5; /* разделители строк в списке контактов */
+  --color-lavender-avatar: #e2dfee; /* нейтральные аватары */
 
-  --color-ink: #1E1838;           /* заголовки, основной текст */
-  --color-ink-soft: #433C5E;      /* лид-абзацы и текст карточек */
-  --color-ink-muted: #575073;     /* подписи, метки полей */
-  --color-ink-chip: #4A4366;      /* текст белой плашки над H1 */
+  --color-ink: #1e1838; /* заголовки, основной текст */
+  --color-ink-soft: #433c5e; /* лид-абзацы и текст карточек */
+  --color-ink-muted: #575073; /* подписи, метки полей */
+  --color-ink-chip: #4a4366; /* текст белой плашки над H1 */
 
   /* Акцент — кнопки, номера шагов, иконки выгод */
-  --color-accent: #5B3FD9;
-  --color-accent-hover: #4329B8;
+  --color-accent: #5b3fd9;
+  --color-accent-hover: #4329b8;
 
   /* Коралловый — блок «Проблема», аватар Анны */
-  --color-coral-50: #FFF4F0;
-  --color-coral-100: #FFE1D6;
-  --color-coral-700: #B4361E;
+  --color-coral-50: #fff4f0;
+  --color-coral-100: #ffe1d6;
+  --color-coral-700: #b4361e;
 
   /* Заметка-стикер */
-  --color-note: #FFF4CC;
-  --color-note-ink: #7A5A00;
+  --color-note: #fff4cc;
+  --color-note-ink: #7a5a00;
 
   /* Скругления */
   --radius-chip: 9999px;
-  --radius-field: 14px;   /* поля телефон/почта, строка поиска */
+  --radius-field: 14px; /* поля телефон/почта, строка поиска */
   --radius-note: 16px;
   --radius-btn: 18px;
-  --radius-tile: 20px;    /* боли, выгоды (мобильный) */
-  --radius-card: 24px;    /* карточки (мобильный) */
+  --radius-tile: 20px; /* боли, выгоды (мобильный) */
+  --radius-card: 24px; /* карточки (мобильный) */
   --radius-card-lg: 28px; /* карточки (десктоп) */
   --radius-section: 32px; /* секции (мобильный) */
   --radius-section-lg: 48px; /* секции (десктоп) */
 
   /* Тени */
   --shadow-cta: 0 10px 24px rgb(91 63 217 / 0.28);
-  --shadow-card: 0 16px 40px rgb(30 24 56 / 0.10);
+  --shadow-card: 0 16px 40px rgb(30 24 56 / 0.1);
   --shadow-card-lg: 0 24px 56px rgb(30 24 56 / 0.12);
   --shadow-step: 0 8px 24px rgb(30 24 56 / 0.06);
   --shadow-step-lg: 0 10px 30px rgb(30 24 56 / 0.06);
@@ -61,10 +61,10 @@
 
 @theme {
   /* Extra radii used in the references */
-  --radius-icon: 12px;     /* coral icon squares (mobile) */
-  --radius-icon-lg: 14px;  /* coral icon squares (desktop) */
+  --radius-icon: 12px; /* coral icon squares (mobile) */
+  --radius-icon-lg: 14px; /* coral icon squares (desktop) */
   --radius-field-lg: 16px; /* phone/email fields (desktop) */
-  --radius-note-lg: 18px;  /* sticky note (desktop) */
+  --radius-note-lg: 18px; /* sticky note (desktop) */
   --tracking-h2-lg: -0.035em;
 
   /* Headings. "-lg" sizes are for desktop and grow with the screen */
@@ -115,18 +115,18 @@
   --text-26: 1.625rem;
   --text-26--line-height: normal;
 
-  --leading-text: 1.5;     /* paragraphs */
+  --leading-text: 1.5; /* paragraphs */
   --leading-text-lg: 1.55; /* card paragraphs on desktop */
-  --leading-note: 1.45;    /* sticky note, benefits subtitle */
+  --leading-note: 1.45; /* sticky note, benefits subtitle */
 
   /* Page rhythm. The base step (--spacing: 4px) is Tailwind's default */
-  --spacing-gutter: 1.25rem;     /* side padding, mobile */
-  --spacing-gutter-lg: 1.5rem;   /* side padding, desktop */
-  --spacing-section: 3.5rem;     /* vertical section padding, mobile */
-  --spacing-section-lg: 6.5rem;  /* vertical section padding, desktop */
+  --spacing-gutter: 1.25rem; /* side padding, mobile */
+  --spacing-gutter-lg: 1.5rem; /* side padding, desktop */
+  --spacing-section: 3.5rem; /* vertical section padding, mobile */
+  --spacing-section-lg: 6.5rem; /* vertical section padding, desktop */
 
   /* Content widths */
   --container-page: 1200px;
-  --container-card: 480px;  /* contact card in the hero */
+  --container-card: 480px; /* contact card in the hero */
   --container-final: 640px; /* final call to action */
 }

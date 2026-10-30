@@ -1,17 +1,14 @@
-import * as React from "react"
-import { ChevronDownIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { ChevronDownIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Native select: the system list on phones. Same look as Input
-function NativeSelect({
-  className,
-  ...props
-}: React.ComponentProps<"select">) {
+function NativeSelect({ className, ...props }: React.ComponentProps<"select">) {
   return (
     <div
       className={cn(
         "group/native-select relative w-full has-[select:disabled]:opacity-50",
-        className
+        className,
       )}
       data-slot="native-select-wrapper"
     >
@@ -26,7 +23,7 @@ function NativeSelect({
         data-slot="native-select-icon"
       />
     </div>
-  )
+  );
 }
 
 function NativeSelectOption({
@@ -39,7 +36,7 @@ function NativeSelectOption({
       className={cn("bg-[Canvas] text-[CanvasText]", className)}
       {...props}
     />
-  )
+  );
 }
 
 function NativeSelectOptGroup({
@@ -52,7 +49,7 @@ function NativeSelectOptGroup({
       className={cn("bg-[Canvas] text-[CanvasText]", className)}
       {...props}
     />
-  )
+  );
 }
 
-export { NativeSelect, NativeSelectOptGroup, NativeSelectOption }
+export { NativeSelect, NativeSelectOptGroup, NativeSelectOption };

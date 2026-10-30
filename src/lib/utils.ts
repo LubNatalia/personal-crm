@@ -1,4 +1,4 @@
-import { createCn } from "cn/config"
+import { createCn } from "cn/config";
 
 // Class merging that knows the custom scales from tokens.css. Without this,
 // "text-16" is taken for a text color and dropped next to "text-ink",
@@ -43,4 +43,4 @@ export const cn = createCn({
       shadow: ["cta", "card", "card-lg", "step", "step-lg"],
     },
   },
-})
+});

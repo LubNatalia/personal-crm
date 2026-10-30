@@ -1,6 +1,12 @@
 "use client";
 
-import { Check, ChevronDown, ChevronRight, ChevronUp, Clock } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Clock,
+} from "lucide-react";
 import Link from "next/link";
 import { useId, useOptimistic, useState, useTransition } from "react";
 import {
@@ -241,7 +247,13 @@ function DueContactItem({ row, ticked, onToggle }: DueContactItemProps) {
   );
 }
 
-function DueBadge({ row, isMarked }: { row: DueContactRow; isMarked: boolean }) {
+function DueBadge({
+  row,
+  isMarked,
+}: {
+  row: DueContactRow;
+  isMarked: boolean;
+}) {
   const Icon = isMarked ? Check : Clock;
   return (
     <span
@@ -252,7 +264,11 @@ function DueBadge({ row, isMarked }: { row: DueContactRow; isMarked: boolean }) 
           : "bg-coral-50 text-coral-700",
       )}
     >
-      <Icon aria-hidden="true" strokeWidth={2.4} className="size-3.5 shrink-0" />
+      <Icon
+        aria-hidden="true"
+        strokeWidth={2.4}
+        className="size-3.5 shrink-0"
+      />
       {isMarked ? CONTACTED_TODAY_LABEL : row.dueBadge}
     </span>
   );

@@ -8,16 +8,18 @@ context: |
   Product idea, main scenario, constraints and out-of-scope list: specs/01-продуктовая-идея.md
   Working rules, stack, branches and deploy: CLAUDE.md
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
-
+  Per-artifact rules (optional)
+  Add custom rules for specific artifacts.
+  Example:
+   rules:
+     proposal:
+       - Keep proposals under 500 words
+       - Always state what is out of scope
+     specs:
+        - Every scenario has its own test
+     tasks:
+       - Break tasks into chunks of max 2 hours
+       - Test before code - write the test, run it and see it fail, then write the code and see the test pass
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.
 # This is separate from artifact rules above.

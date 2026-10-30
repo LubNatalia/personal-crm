@@ -1,9 +1,10 @@
 import postgres from "postgres";
 import { beforeEach, describe, expect, it } from "vitest";
 import { withDatabase } from "@/test/database-url.mts";
+import { truncateAllTables } from "@/test/test-database";
 import { getDb } from "./index";
 import { contacts } from "./schema";
-import { resetTestDb, truncateAllTables } from "./test-db";
+import { resetTestDb } from "./test-db";
 
 const url = process.env.DATABASE_URL as string;
 

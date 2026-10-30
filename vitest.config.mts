@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import path from "node:path";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import { testDatabaseUrl } from "./src/test/database-url.mts";
 
 // @next/env is CommonJS whose exports can't be imported by name from ESM
@@ -27,6 +27,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // End-to-end tests are run by Playwright
+    exclude: [...configDefaults.exclude, "e2e/**"],
     // One test database shared by all files: they run one after another
     fileParallelism: false,
     // Tests get the address of the test database, not the working one

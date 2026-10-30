@@ -14,3 +14,9 @@ export function databaseName(url: string) {
 export function testDatabaseUrl(url: string) {
   return withDatabase(url, `${databaseName(url)}_test`);
 }
+
+// End-to-end tests have a database of their own: `crm` -> `crm_e2e_test`,
+// so they can run alongside Vitest without emptying its tables
+export function e2eDatabaseUrl(url: string) {
+  return withDatabase(url, `${databaseName(url)}_e2e_test`);
+}

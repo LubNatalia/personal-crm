@@ -29,7 +29,8 @@ ssh_opts=(
 target="$DEPLOY_USER@$DEPLOY_HOST"
 
 cd "$(dirname "$0")"
-scp "${ssh_opts[@]}" compose.yml deploy.sh rollback.sh "$target:$remote_dir/"
+# The whole deploy folder: a new script gets to the server without changes here
+scp "${ssh_opts[@]}" ./* "$target:$remote_dir/"
 # The registry token goes through stdin, so it never appears in a command line
 printf '%s\n' "$GHCR_TOKEN" \
   | ssh "${ssh_opts[@]}" "$target" "bash $remote_dir/deploy.sh '$image' '$GHCR_USER'"

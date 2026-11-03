@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deploys one app image on the server:
-# pull -> migrations in a one-off container -> new app container -> smoke /health.
+# pull -> database backup -> migrations in a one-off container -> new app container
+# -> smoke /health.
 # There is no automatic rollback: on any failure the script stops with an error.
 #
 # Usage: deploy.sh <image> [registry-user]
@@ -9,7 +10,6 @@ set -euo pipefail
 
 image="${1:?Usage: deploy.sh <image> [registry-user]}"
 registry_user="${2:-}"
-health_url=http://127.0.0.1:3000/health
 
 registry_token=""
 if [ -n "$registry_user" ]; then
@@ -19,13 +19,8 @@ fi
 exec </dev/null
 
 cd "$(dirname "$0")"
-compose=(docker compose -p prod -f compose.yml)
-
-if [ ! -f .env ]; then
-  echo "No .env in $PWD: create it first (see README)" >&2
-  exit 1
-fi
-chmod 600 .env
+source ./lib.sh
+require_env
 
 echo "==> Image $image"
 if ! docker image inspect "$image" >/dev/null 2>&1; then
@@ -40,6 +35,15 @@ export APP_IMAGE="$image"
 
 echo "==> Database"
 "${compose[@]}" up --detach --wait db
+
+echo "==> Backup"
+if ! backup=$(bash ./backup.sh); then
+  echo "Backup FAILED: the new version was not started, the old one keeps running" >&2
+  exit 1
+fi
+echo "Saved $backup"
+# Keep only the 10 newest backups: the names start with the date, so they sort by time
+printf '%s\n' backups/*.dump | sort --reverse | tail -n +11 | xargs --no-run-if-empty rm --
 
 echo "==> Migrations"
 if ! "${compose[@]}" run --rm --no-TTY migrate; then
@@ -57,22 +61,10 @@ if [ "$current" != "$image" ]; then
   echo "$image" > current-image
 fi
 
-echo "==> Smoke test $health_url"
-status=000
-for _ in $(seq 30); do
-  status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 "$health_url" || true)
-  if [ "$status" = 200 ]; then
-    break
-  fi
-  sleep 2
-done
-if [ "$status" != 200 ]; then
-  echo "Smoke test FAILED: $health_url answered $status." >&2
+if ! smoke_test; then
   echo "The new version is running but broken. Nothing was rolled back: to go back run rollback.sh" >&2
-  "${compose[@]}" logs --tail 50 app >&2
   exit 1
 fi
-echo "Smoke test passed: $health_url answered 200"
 
 echo "==> Cleanup: keep only the current and the previous app images"
 previous=$(cat previous-image 2>/dev/null || true)

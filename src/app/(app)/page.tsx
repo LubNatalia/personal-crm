@@ -20,6 +20,7 @@ import {
 import { countContacts, listContacts, listDueContacts } from "@/db/contacts";
 import { listGroups } from "@/db/groups";
 import { formatEmptyListMessage, formatListSummary } from "@/lib/contact-list";
+import { requireUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 // Group ids are Postgres integers; anything else in the address is no group
@@ -44,6 +45,7 @@ function homeHref(query: string, groupId: number | null) {
 }
 
 export default async function ContactsPage({ searchParams }: PageProps<"/">) {
+  const user = await requireUser();
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
   const addedId =
@@ -51,18 +53,19 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
   const deletedName =
     typeof params.deleted === "string" ? params.deleted : null;
 
-  // A group that is not there (deleted, an old bookmark) means "all"
-  const groups = await listGroups();
+  // A group that is not there (deleted, an old bookmark, another user's)
+  // means "all"
+  const groups = await listGroups(user.id);
   const requestedGroupId = parseGroupParam(params.group);
   const group = groups.find((item) => item.id === requestedGroupId) ?? null;
   const groupId = group?.id ?? null;
 
   const [items, total, dueContacts] = await Promise.all([
-    listContacts(query, groupId),
-    countContacts(groupId),
+    listContacts(user.id, query, groupId),
+    countContacts(user.id, groupId),
     // The "time to get in touch" block is hidden while searching and while
     // a group is chosen
-    query || group ? null : listDueContacts(),
+    query || group ? null : listDueContacts(user.id),
   ]);
   const added = items.find((contact) => contact.id === addedId);
   const view = { query, groupName: group?.name ?? null };

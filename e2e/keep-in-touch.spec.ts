@@ -5,7 +5,8 @@ import {
   formatLastContacted,
 } from "../src/lib/keep-in-touch";
 import { addDays, addMonths } from "../src/test/days";
-import { resetDatabase, withDatabase } from "./database";
+import { signIn } from "./auth";
+import { resetDatabase, TEST_USER_ID, withDatabase } from "./database";
 
 // Main paths of keep in touch, from openspec/specs/keep-in-touch/spec.md.
 // Days are counted by the database from now(), so the tests put the last
@@ -16,6 +17,10 @@ const NOTE = "Обсудили отпуск";
 const NOTES_HINT = "Новая строка — новое общение: срок отсчитывается заново";
 
 test.beforeEach(resetDatabase);
+// Every test works as the signed-in test user
+test.beforeEach(async ({ page }) => {
+  await signIn(page);
+});
 
 // Today in the app's time zone, taken from the database like the app does
 async function getToday() {
@@ -35,8 +40,9 @@ async function addWeeklyContacts(
     for (const { name, daysAgo, notes } of rows) {
       await sql`
         insert into contacts
-          (name, notes, contact_frequency, frequency_set_at, last_contacted_at)
+          (user_id, name, notes, contact_frequency, frequency_set_at, last_contacted_at)
         values (
+          ${TEST_USER_ID},
           ${name},
           ${notes ?? null},
           'week',
@@ -51,7 +57,8 @@ async function addWeeklyContacts(
 async function addGroup(name: string, memberNames: string[]) {
   await withDatabase(async (sql) => {
     const [group] = await sql<{ id: number }[]>`
-      insert into groups (name) values (${name}) returning id
+      insert into groups (user_id, name)
+      values (${TEST_USER_ID}, ${name}) returning id
     `;
     await sql`
       insert into contact_groups (contact_id, group_id)
@@ -173,6 +180,7 @@ test("set how often to keep in touch and see when to get in touch", async ({
     const other = await browser.newContext();
     try {
       const otherPage = await other.newPage();
+      await signIn(otherPage);
       await otherPage.goto(page.url());
       await expect(frequencyOption(otherPage)).toHaveText("Раз в месяц");
     } finally {

@@ -66,8 +66,11 @@ const dueFields = {
   contactedToday: sql<boolean>`coalesce(${lastContactedDay} = ${today}, false)`,
 };
 
+// Every function takes the user's id first and touches only that user's
+// contacts: another user's contact id behaves like one that doesn't exist
+
 // Contacts it's time to get in touch with: the most overdue first, then by name
-export async function listDueContacts() {
+export async function listDueContacts(userId: string) {
   return getDb()
     .select({
       id: contacts.id,
@@ -79,7 +82,13 @@ export async function listDueContacts() {
       overdueDays: sql<number>`${overdueDays}`,
     })
     .from(contacts)
-    .where(and(isNotNull(contacts.contactFrequency), sql`${overdueDays} >= 0`))
+    .where(
+      and(
+        eq(contacts.userId, userId),
+        isNotNull(contacts.contactFrequency),
+        sql`${overdueDays} >= 0`,
+      ),
+    )
     .orderBy(
       desc(overdueDays),
       sql`${contacts.name} collate "ru-x-icu"`,
@@ -106,7 +115,11 @@ function inGroup(groupId: number | null | undefined) {
 
 // Group names are put on the labels by the page, from the list of groups:
 // a row carries only ids
-export async function listContacts(nameQuery: string, groupId?: number | null) {
+export async function listContacts(
+  userId: string,
+  nameQuery: string,
+  groupId?: number | null,
+) {
   return (
     getDb()
       .select({
@@ -120,6 +133,7 @@ export async function listContacts(nameQuery: string, groupId?: number | null) {
       .from(contacts)
       .where(
         and(
+          eq(contacts.userId, userId),
           nameQuery
             ? ilike(contacts.name, `%${escapeLikePattern(nameQuery)}%`)
             : undefined,
@@ -132,15 +146,15 @@ export async function listContacts(nameQuery: string, groupId?: number | null) {
 }
 
 // All contacts, or the ones in a group
-export async function countContacts(groupId?: number | null) {
+export async function countContacts(userId: string, groupId?: number | null) {
   const [row] = await getDb()
     .select({ value: count() })
     .from(contacts)
-    .where(inGroup(groupId));
+    .where(and(eq(contacts.userId, userId), inGroup(groupId)));
   return row.value;
 }
 
-export async function getContact(id: number) {
+export async function getContact(userId: string, id: number) {
   const [row] = await getDb()
     .select({
       ...getTableColumns(contacts),
@@ -148,7 +162,7 @@ export async function getContact(id: number) {
       groupIds: groupIdsField,
     })
     .from(contacts)
-    .where(eq(contacts.id, id));
+    .where(and(eq(contacts.id, id), eq(contacts.userId, userId)));
   return row ?? null;
 }
 
@@ -158,9 +172,12 @@ type Transaction = Parameters<
 
 // Makes the contact's groups exactly `groupIds`: links not in the list are
 // removed, new ones added. A group deleted meanwhile (e.g. in another tab) is
-// skipped without an error, the rest is saved
+// skipped without an error, the rest is saved. So is a group of another user:
+// a contact can only be in its owner's groups. The contact itself is expected
+// to be the user's (the caller has checked)
 async function saveContactGroups(
   tx: Transaction,
+  userId: string,
   contactId: number,
   groupIds: number[],
 ) {
@@ -186,30 +203,35 @@ async function saveContactGroups(
           groupId: groups.id,
         })
         .from(groups)
-        .where(inArray(groups.id, groupIds))
+        .where(and(inArray(groups.id, groupIds), eq(groups.userId, userId)))
         // Keeps the groups from being deleted until this transaction ends
         .for("key share"),
     )
     .onConflictDoNothing();
 }
 
-export async function createContact({ groupIds, ...input }: ContactInput) {
+export async function createContact(
+  userId: string,
+  { groupIds, ...input }: ContactInput,
+) {
   return getDb().transaction(async (tx) => {
     const [row] = await tx
       .insert(contacts)
       .values({
         ...input,
+        userId,
         // Notes on a new contact count as being in touch on the day it's added
         lastContactedAt: input.notes ? sql`now()` : null,
         frequencySetAt: input.contactFrequency ? sql`now()` : null,
       })
       .returning({ id: contacts.id });
-    await saveContactGroups(tx, row.id, groupIds);
+    await saveContactGroups(tx, userId, row.id, groupIds);
     return row.id;
   });
 }
 
 export async function updateContact(
+  userId: string,
   id: number,
   { groupIds, ...input }: ContactInput,
 ) {
@@ -222,7 +244,7 @@ export async function updateContact(
         contactFrequency: contacts.contactFrequency,
       })
       .from(contacts)
-      .where(eq(contacts.id, id))
+      .where(and(eq(contacts.id, id), eq(contacts.userId, userId)))
       .for("update");
     if (!previous) {
       return false;
@@ -249,7 +271,7 @@ export async function updateContact(
         frequencySetAt,
       })
       .where(eq(contacts.id, id));
-    await saveContactGroups(tx, id, groupIds);
+    await saveContactGroups(tx, userId, id, groupIds);
     return true;
   });
 }
@@ -263,7 +285,7 @@ function exactTimestamp(column: typeof contacts.lastContactedAt) {
 
 // Marks that we were in touch today. Returns what's needed to undo it, or
 // null when there's nothing to mark: no such contact or no frequency set
-export async function markContacted(id: number) {
+export async function markContacted(userId: string, id: number) {
   return getDb().transaction(async (tx) => {
     const [row] = await tx
       .select({
@@ -271,7 +293,7 @@ export async function markContacted(id: number) {
         previous: exactTimestamp(contacts.lastContactedAt),
       })
       .from(contacts)
-      .where(eq(contacts.id, id))
+      .where(and(eq(contacts.id, id), eq(contacts.userId, userId)))
       .for("update");
     if (!row || row.contactFrequency === null) {
       return null;
@@ -291,6 +313,7 @@ export async function markContacted(id: number) {
 // marked again since (e.g. a new note from another tab); returns whether
 // the mark was undone
 export async function unmarkContacted(
+  userId: string,
   id: number,
   markedAt: string,
   previous: string | null,
@@ -301,6 +324,7 @@ export async function unmarkContacted(
     .where(
       and(
         eq(contacts.id, id),
+        eq(contacts.userId, userId),
         sql`${contacts.lastContactedAt} = ${markedAt}::timestamptz`,
       ),
     )
@@ -309,10 +333,10 @@ export async function unmarkContacted(
 }
 
 // Returns the deleted contact's name, or null if it was already gone
-export async function deleteContact(id: number) {
+export async function deleteContact(userId: string, id: number) {
   const [row] = await getDb()
     .delete(contacts)
-    .where(eq(contacts.id, id))
+    .where(and(eq(contacts.id, id), eq(contacts.userId, userId)))
     .returning({ name: contacts.name });
   return row?.name ?? null;
 }

@@ -17,9 +17,15 @@ import {
 import { createGroup, deleteGroup } from "./groups";
 import { getDb } from "./index";
 import { contactGroups, contacts } from "./schema";
-import { resetTestDb } from "./test-db";
+import { createTestUser, resetTestDb } from "./test-db";
 
-beforeEach(resetTestDb);
+// The user whose data most tests work with
+let userId: string;
+
+beforeEach(async () => {
+  await resetTestDb();
+  userId = await createTestUser("anna@example.com");
+});
 
 function contactInput(overrides: Partial<ContactInput> = {}): ContactInput {
   return {
@@ -36,14 +42,14 @@ function contactInput(overrides: Partial<ContactInput> = {}): ContactInput {
 }
 
 async function makeGroup(name: string) {
-  const result = await createGroup(name);
+  const result = await createGroup(userId, name);
   if (!result.ok) throw new Error(`Group "${name}" was not created`);
   return result.group.id;
 }
 
 // Group ids of a contact, sorted so the order of rows doesn't matter
-async function groupIdsOf(id: number) {
-  const contact = await getContact(id);
+async function groupIdsOf(id: number, owner = userId) {
+  const contact = await getContact(owner, id);
   return [...(contact?.groupIds ?? [])].sort((a, b) => a - b);
 }
 
@@ -53,6 +59,7 @@ describe("createContact: groups", () => {
     const tennis = await makeGroup("Теннис");
 
     const id = await createContact(
+      userId,
       contactInput({ groupIds: [friends, tennis] }),
     );
 
@@ -62,7 +69,7 @@ describe("createContact: groups", () => {
   it("creates a contact without groups", async () => {
     await makeGroup("Друзья");
 
-    const id = await createContact(contactInput());
+    const id = await createContact(userId, contactInput());
 
     expect(await groupIdsOf(id)).toEqual([]);
   });
@@ -70,9 +77,10 @@ describe("createContact: groups", () => {
   it("skips a group that was deleted meanwhile and keeps the rest", async () => {
     const friends = await makeGroup("Друзья");
     const tennis = await makeGroup("Теннис");
-    await deleteGroup(tennis);
+    await deleteGroup(userId, tennis);
 
     const id = await createContact(
+      userId,
       contactInput({ groupIds: [friends, tennis] }),
     );
 
@@ -81,13 +89,14 @@ describe("createContact: groups", () => {
 
   it("saves frequency and notes as before", async () => {
     const id = await createContact(
+      userId,
       contactInput({
         notes: "Договорились созвониться",
         contactFrequency: "month",
       }),
     );
 
-    const contact = await getContact(id);
+    const contact = await getContact(userId, id);
     expect(contact?.notes).toBe("Договорились созвониться");
     expect(contact?.contactFrequency).toBe("month");
     expect(contact?.lastContactedDay).toBe(contact?.today);
@@ -101,10 +110,12 @@ describe("updateContact: groups", () => {
     const tennis = await makeGroup("Теннис");
     const family = await makeGroup("Семья");
     const id = await createContact(
+      userId,
       contactInput({ groupIds: [friends, tennis] }),
     );
 
     const updated = await updateContact(
+      userId,
       id,
       contactInput({ groupIds: [tennis, family] }),
     );
@@ -115,18 +126,24 @@ describe("updateContact: groups", () => {
 
   it("removes all groups when the list is empty", async () => {
     const friends = await makeGroup("Друзья");
-    const id = await createContact(contactInput({ groupIds: [friends] }));
+    const id = await createContact(
+      userId,
+      contactInput({ groupIds: [friends] }),
+    );
 
-    await updateContact(id, contactInput({ groupIds: [] }));
+    await updateContact(userId, id, contactInput({ groupIds: [] }));
 
     expect(await groupIdsOf(id)).toEqual([]);
   });
 
   it("keeps a group that stays ticked", async () => {
     const friends = await makeGroup("Друзья");
-    const id = await createContact(contactInput({ groupIds: [friends] }));
+    const id = await createContact(
+      userId,
+      contactInput({ groupIds: [friends] }),
+    );
 
-    await updateContact(id, contactInput({ groupIds: [friends] }));
+    await updateContact(userId, id, contactInput({ groupIds: [friends] }));
 
     expect(await groupIdsOf(id)).toEqual([friends]);
   });
@@ -134,22 +151,30 @@ describe("updateContact: groups", () => {
   it("skips a group that was deleted meanwhile and keeps the rest", async () => {
     const friends = await makeGroup("Друзья");
     const tennis = await makeGroup("Теннис");
-    const id = await createContact(contactInput());
-    await deleteGroup(tennis);
+    const id = await createContact(userId, contactInput());
+    await deleteGroup(userId, tennis);
 
-    await updateContact(id, contactInput({ groupIds: [friends, tennis] }));
+    await updateContact(
+      userId,
+      id,
+      contactInput({ groupIds: [friends, tennis] }),
+    );
 
     expect(await groupIdsOf(id)).toEqual([friends]);
   });
 
   it("does not touch other contacts' groups", async () => {
     const friends = await makeGroup("Друзья");
-    const anna = await createContact(contactInput({ groupIds: [friends] }));
+    const anna = await createContact(
+      userId,
+      contactInput({ groupIds: [friends] }),
+    );
     const boris = await createContact(
+      userId,
       contactInput({ name: "Борис", groupIds: [friends] }),
     );
 
-    await updateContact(anna, contactInput({ groupIds: [] }));
+    await updateContact(userId, anna, contactInput({ groupIds: [] }));
 
     expect(await groupIdsOf(boris)).toEqual([friends]);
   });
@@ -158,20 +183,21 @@ describe("updateContact: groups", () => {
     const friends = await makeGroup("Друзья");
 
     expect(
-      await updateContact(999, contactInput({ groupIds: [friends] })),
+      await updateContact(userId, 999, contactInput({ groupIds: [friends] })),
     ).toBe(false);
     expect(await getDb().select().from(contactGroups)).toEqual([]);
   });
 
   it("saves frequency and notes as before", async () => {
-    const id = await createContact(contactInput());
+    const id = await createContact(userId, contactInput());
 
     await updateContact(
+      userId,
       id,
       contactInput({ notes: "Новая заметка", contactFrequency: "week" }),
     );
 
-    const contact = await getContact(id);
+    const contact = await getContact(userId, id);
     expect(contact?.notes).toBe("Новая заметка");
     expect(contact?.contactFrequency).toBe("week");
     expect(contact?.lastContactedDay).toBe(contact?.today);
@@ -181,9 +207,12 @@ describe("updateContact: groups", () => {
 describe("deleteContact: groups", () => {
   it("removes the contact's links, the groups stay", async () => {
     const friends = await makeGroup("Друзья");
-    const id = await createContact(contactInput({ groupIds: [friends] }));
+    const id = await createContact(
+      userId,
+      contactInput({ groupIds: [friends] }),
+    );
 
-    expect(await deleteContact(id)).toBe("Анна");
+    expect(await deleteContact(userId, id)).toBe("Анна");
 
     expect(await getDb().select().from(contactGroups)).toEqual([]);
     const remaining = await getDb()
@@ -194,13 +223,16 @@ describe("deleteContact: groups", () => {
 
 describe("getContact", () => {
   it("returns null for a contact that does not exist", async () => {
-    expect(await getContact(999)).toBeNull();
+    expect(await getContact(userId, 999)).toBeNull();
   });
 
   it("returns the contact's own groups only", async () => {
     const friends = await makeGroup("Друзья");
     await makeGroup("Теннис");
-    const id = await createContact(contactInput({ groupIds: [friends] }));
+    const id = await createContact(
+      userId,
+      contactInput({ groupIds: [friends] }),
+    );
 
     expect(await groupIdsOf(id)).toEqual([friends]);
     expect(
@@ -217,11 +249,15 @@ describe("listContacts and countContacts: group filter", () => {
   async function seedTwoGroups() {
     const friends = await makeGroup("Друзья");
     const tennis = await makeGroup("Теннис");
-    await createContact(contactInput({ name: "Борис", groupIds: [tennis] }));
     await createContact(
+      userId,
+      contactInput({ name: "Борис", groupIds: [tennis] }),
+    );
+    await createContact(
+      userId,
       contactInput({ name: "Анна", groupIds: [friends, tennis] }),
     );
-    await createContact(contactInput({ name: "Вера" }));
+    await createContact(userId, contactInput({ name: "Вера" }));
     return { friends, tennis };
   }
 
@@ -230,29 +266,36 @@ describe("listContacts and countContacts: group filter", () => {
   it("lists only the group's contacts, alphabetically", async () => {
     const { tennis } = await seedTwoGroups();
 
-    expect(names(await listContacts("", tennis))).toEqual(["Анна", "Борис"]);
+    expect(names(await listContacts(userId, "", tennis))).toEqual([
+      "Анна",
+      "Борис",
+    ]);
   });
 
   it("shows a contact from two groups in both", async () => {
     const { friends, tennis } = await seedTwoGroups();
 
-    expect(names(await listContacts("", friends))).toEqual(["Анна"]);
-    expect(names(await listContacts("", tennis))).toContain("Анна");
+    expect(names(await listContacts(userId, "", friends))).toEqual(["Анна"]);
+    expect(names(await listContacts(userId, "", tennis))).toContain("Анна");
   });
 
   it("searches by name inside the group only", async () => {
     const { tennis } = await seedTwoGroups();
-    await createContact(contactInput({ name: "Анатолий" }));
+    await createContact(userId, contactInput({ name: "Анатолий" }));
 
-    expect(names(await listContacts("Ан", tennis))).toEqual(["Анна"]);
-    expect(await listContacts("Вер", tennis)).toEqual([]);
+    expect(names(await listContacts(userId, "Ан", tennis))).toEqual(["Анна"]);
+    expect(await listContacts(userId, "Вер", tennis)).toEqual([]);
   });
 
   it("lists everyone, alphabetically, without a group", async () => {
     await seedTwoGroups();
 
-    expect(names(await listContacts(""))).toEqual(["Анна", "Борис", "Вера"]);
-    expect(names(await listContacts("", null))).toEqual([
+    expect(names(await listContacts(userId, ""))).toEqual([
+      "Анна",
+      "Борис",
+      "Вера",
+    ]);
+    expect(names(await listContacts(userId, "", null))).toEqual([
       "Анна",
       "Борис",
       "Вера",
@@ -263,13 +306,13 @@ describe("listContacts and countContacts: group filter", () => {
     await seedTwoGroups();
     const analysts = await makeGroup("Аналитики");
 
-    expect(await listContacts("", analysts)).toEqual([]);
+    expect(await listContacts(userId, "", analysts)).toEqual([]);
   });
 
   it("gives every row the ids of its groups", async () => {
     const { friends, tennis } = await seedTwoGroups();
 
-    const rows = await listContacts("");
+    const rows = await listContacts(userId, "");
     const byName = Object.fromEntries(
       rows.map((row) => [row.name, [...row.groupIds].sort((a, b) => a - b)]),
     );
@@ -284,11 +327,11 @@ describe("listContacts and countContacts: group filter", () => {
     const { friends, tennis } = await seedTwoGroups();
     const analysts = await makeGroup("Аналитики");
 
-    expect(await countContacts()).toBe(3);
-    expect(await countContacts(null)).toBe(3);
-    expect(await countContacts(tennis)).toBe(2);
-    expect(await countContacts(friends)).toBe(1);
-    expect(await countContacts(analysts)).toBe(0);
+    expect(await countContacts(userId)).toBe(3);
+    expect(await countContacts(userId, null)).toBe(3);
+    expect(await countContacts(userId, tennis)).toBe(2);
+    expect(await countContacts(userId, friends)).toBe(1);
+    expect(await countContacts(userId, analysts)).toBe(0);
   });
 });
 
@@ -314,18 +357,19 @@ function moscowTime(value: string) {
 }
 
 async function contactOf(id: number) {
-  const contact = await getContact(id);
+  const contact = await getContact(userId, id);
   if (!contact) throw new Error(`Contact ${id} not found`);
   return contact;
 }
 
 async function dueNames() {
-  return (await listDueContacts()).map((contact) => contact.name);
+  return (await listDueContacts(userId)).map((contact) => contact.name);
 }
 
 // A contact to keep in touch with weekly, overdue by 17 days
 async function makeOverdueContact(overrides: Partial<ContactInput> = {}) {
   const id = await createContact(
+    userId,
     contactInput({ notes: NOTES, contactFrequency: "week", ...overrides }),
   );
   await setTimes(id, { lastContactedAt: daysAgo(24) });
@@ -337,7 +381,7 @@ describe("keep in touch: frequency", () => {
     const id = await makeOverdueContact();
     expect(await dueNames()).toEqual(["Анна"]);
 
-    await updateContact(id, contactInput({ notes: NOTES }));
+    await updateContact(userId, id, contactInput({ notes: NOTES }));
 
     const contact = await contactOf(id);
     expect(contact.contactFrequency).toBeNull();
@@ -346,7 +390,7 @@ describe("keep in touch: frequency", () => {
   });
 
   it("never puts a contact without a frequency in the block", async () => {
-    const id = await createContact(contactInput({ notes: NOTES }));
+    const id = await createContact(userId, contactInput({ notes: NOTES }));
     await setTimes(id, { lastContactedAt: sql`now() - interval '5 years'` });
 
     expect(await dueNames()).toEqual([]);
@@ -359,6 +403,7 @@ describe("keep in touch: a new note", () => {
     expect(await dueNames()).toEqual(["Анна"]);
 
     await updateContact(
+      userId,
       id,
       contactInput({
         notes: `${NOTES}\nСозвонились`,
@@ -391,6 +436,7 @@ describe("keep in touch: a new note", () => {
       const id = await makeOverdueContact();
 
       await updateContact(
+        userId,
         id,
         contactInput({ notes: NOTES, contactFrequency: "week", ...overrides }),
       );
@@ -403,6 +449,7 @@ describe("keep in touch: a new note", () => {
 
   it("counts notes on a new contact as being in touch on the day it's added", async () => {
     const id = await createContact(
+      userId,
       contactInput({ notes: NOTES, contactFrequency: "month" }),
     );
 
@@ -416,7 +463,7 @@ describe("keep in touch: markContacted and unmarkContacted", () => {
   it("marks today, takes the contact out of the block and keeps the notes", async () => {
     const id = await makeOverdueContact();
 
-    const mark = await markContacted(id);
+    const mark = await markContacted(userId, id);
 
     expect(mark?.previous).not.toBeNull();
     const contact = await contactOf(id);
@@ -431,7 +478,7 @@ describe("keep in touch: markContacted and unmarkContacted", () => {
     const id = await makeOverdueContact();
     await setTimes(id, { lastContactedAt: daysAgo(6) });
 
-    await markContacted(id);
+    await markContacted(userId, id);
 
     const contact = await contactOf(id);
     expect(contact.dueDay).toBe(addDays(contact.today, 7));
@@ -439,10 +486,12 @@ describe("keep in touch: markContacted and unmarkContacted", () => {
 
   it("puts back the previous last contact when undone", async () => {
     const id = await makeOverdueContact();
-    const mark = await markContacted(id);
+    const mark = await markContacted(userId, id);
     if (!mark) throw new Error("Not marked");
 
-    expect(await unmarkContacted(id, mark.markedAt, mark.previous)).toBe(true);
+    expect(
+      await unmarkContacted(userId, id, mark.markedAt, mark.previous),
+    ).toBe(true);
 
     const contact = await contactOf(id);
     expect(contact.lastContactedDay).toBe(addDays(contact.today, -24));
@@ -453,21 +502,25 @@ describe("keep in touch: markContacted and unmarkContacted", () => {
   });
 
   it("puts back an unknown last contact when undone", async () => {
-    const id = await createContact(contactInput({ contactFrequency: "week" }));
-    const mark = await markContacted(id);
+    const id = await createContact(
+      userId,
+      contactInput({ contactFrequency: "week" }),
+    );
+    const mark = await markContacted(userId, id);
     if (!mark) throw new Error("Not marked");
     expect(mark.previous).toBeNull();
 
-    await unmarkContacted(id, mark.markedAt, mark.previous);
+    await unmarkContacted(userId, id, mark.markedAt, mark.previous);
 
     expect((await contactOf(id)).lastContactedDay).toBeNull();
   });
 
   it("can't be undone after a new note the same day", async () => {
     const id = await makeOverdueContact();
-    const mark = await markContacted(id);
+    const mark = await markContacted(userId, id);
     if (!mark) throw new Error("Not marked");
     await updateContact(
+      userId,
       id,
       contactInput({
         notes: `${NOTES}\nСозвонились`,
@@ -475,26 +528,32 @@ describe("keep in touch: markContacted and unmarkContacted", () => {
       }),
     );
 
-    expect(await unmarkContacted(id, mark.markedAt, mark.previous)).toBe(false);
+    expect(
+      await unmarkContacted(userId, id, mark.markedAt, mark.previous),
+    ).toBe(false);
     const contact = await contactOf(id);
     expect(contact.lastContactedDay).toBe(contact.today);
     expect(contact.contactedToday).toBe(true);
   });
 
   it("marks nothing without a frequency", async () => {
-    const id = await createContact(contactInput({ notes: NOTES }));
+    const id = await createContact(userId, contactInput({ notes: NOTES }));
     await setTimes(id, { lastContactedAt: null });
 
-    expect(await markContacted(id)).toBeNull();
+    expect(await markContacted(userId, id)).toBeNull();
     expect((await contactOf(id)).lastContactedDay).toBeNull();
   });
 });
 
 describe("keep in touch: where counting starts", () => {
   it("counts from the day the frequency is set for a contact without notes", async () => {
-    const id = await createContact(contactInput());
+    const id = await createContact(userId, contactInput());
 
-    await updateContact(id, contactInput({ contactFrequency: "month" }));
+    await updateContact(
+      userId,
+      id,
+      contactInput({ contactFrequency: "month" }),
+    );
 
     const contact = await contactOf(id);
     expect(contact.lastContactedDay).toBeNull();
@@ -504,10 +563,11 @@ describe("keep in touch: where counting starts", () => {
 
   it("counts from the day the frequency is set for a contact with old notes", async () => {
     // Notes written before keep in touch: the last contact is unknown
-    const id = await createContact(contactInput({ notes: NOTES }));
+    const id = await createContact(userId, contactInput({ notes: NOTES }));
     await setTimes(id, { lastContactedAt: null });
 
     await updateContact(
+      userId,
       id,
       contactInput({ notes: NOTES, contactFrequency: "week" }),
     );
@@ -518,15 +578,16 @@ describe("keep in touch: where counting starts", () => {
   });
 
   it("counts from a known last contact: overdue right away", async () => {
-    const id = await createContact(contactInput({ notes: NOTES }));
+    const id = await createContact(userId, contactInput({ notes: NOTES }));
     await setTimes(id, { lastContactedAt: daysAgo(18) });
 
     await updateContact(
+      userId,
       id,
       contactInput({ notes: NOTES, contactFrequency: "week" }),
     );
 
-    expect(await listDueContacts()).toMatchObject([
+    expect(await listDueContacts(userId)).toMatchObject([
       { name: "Анна", overdueDays: 11 },
     ]);
   });
@@ -536,6 +597,7 @@ describe("keep in touch: where counting starts", () => {
     await setTimes(id, { lastContactedAt: moscowTime("2026-10-02 12:00") });
 
     await updateContact(
+      userId,
       id,
       contactInput({ notes: NOTES, contactFrequency: "month" }),
     );
@@ -544,21 +606,31 @@ describe("keep in touch: where counting starts", () => {
   });
 
   it("keeps the day the frequency was set as the start when it changes", async () => {
-    const id = await createContact(contactInput({ contactFrequency: "week" }));
+    const id = await createContact(
+      userId,
+      contactInput({ contactFrequency: "week" }),
+    );
     await setTimes(id, { frequencySetAt: daysAgo(10) });
 
-    await updateContact(id, contactInput({ contactFrequency: "month" }));
+    await updateContact(
+      userId,
+      id,
+      contactInput({ contactFrequency: "month" }),
+    );
 
     const contact = await contactOf(id);
     expect(contact.dueDay).toBe(addMonths(addDays(contact.today, -10), 1));
   });
 
   it("counts from the new day when the frequency is removed and set again", async () => {
-    const id = await createContact(contactInput({ contactFrequency: "week" }));
+    const id = await createContact(
+      userId,
+      contactInput({ contactFrequency: "week" }),
+    );
     await setTimes(id, { frequencySetAt: daysAgo(40) });
 
-    await updateContact(id, contactInput());
-    await updateContact(id, contactInput({ contactFrequency: "week" }));
+    await updateContact(userId, id, contactInput());
+    await updateContact(userId, id, contactInput({ contactFrequency: "week" }));
 
     const contact = await contactOf(id);
     expect(contact.dueDay).toBe(addDays(contact.today, 7));
@@ -576,7 +648,10 @@ describe("keep in touch: the due day", () => {
   ] as const)(
     "%s from %s is %s",
     async (contactFrequency, lastContacted, dueDay) => {
-      const id = await createContact(contactInput({ contactFrequency }));
+      const id = await createContact(
+        userId,
+        contactInput({ contactFrequency }),
+      );
       await setTimes(id, {
         lastContactedAt: moscowTime(`${lastContacted} 12:00`),
       });
@@ -592,7 +667,10 @@ describe("keep in touch: the due day", () => {
     // 22:00 UTC of the day before
     ["early in the morning", "2026-10-03 01:00", "2026-10-03"],
   ])("counts days in Moscow time: %s", async (_case, moment, lastContacted) => {
-    const id = await createContact(contactInput({ contactFrequency: "week" }));
+    const id = await createContact(
+      userId,
+      contactInput({ contactFrequency: "week" }),
+    );
     await setTimes(id, { lastContactedAt: moscowTime(moment) });
 
     const contact = await contactOf(id);
@@ -604,6 +682,7 @@ describe("keep in touch: the due day", () => {
 describe("listDueContacts", () => {
   async function makeWeeklyContact(name: string, lastContactedDaysAgo: number) {
     const id = await createContact(
+      userId,
       contactInput({ name, contactFrequency: "week" }),
     );
     await setTimes(id, { lastContactedAt: daysAgo(lastContactedDaysAgo) });
@@ -614,7 +693,7 @@ describe("listDueContacts", () => {
     await makeWeeklyContact("Борис", 7);
     await makeWeeklyContact("Вера", 6);
 
-    expect(await listDueContacts()).toMatchObject([
+    expect(await listDueContacts(userId)).toMatchObject([
       { name: "Анна", overdueDays: 17 },
       { name: "Борис", overdueDays: 0 },
     ]);
@@ -641,7 +720,7 @@ describe("keep in touch: contacts from before it", () => {
     // A row as it was before keep in touch: the new columns are empty
     const [row] = await getDb()
       .insert(contacts)
-      .values({ name: "Анна", notes: NOTES })
+      .values({ userId, name: "Анна", notes: NOTES })
       .returning({ id: contacts.id });
 
     const contact = await contactOf(row.id);
@@ -650,5 +729,182 @@ describe("keep in touch: contacts from before it", () => {
     expect(contact.dueDay).toBeNull();
     expect(contact.notes).toBe(NOTES);
     expect(await dueNames()).toEqual([]);
+  });
+});
+
+// Two users in one database: nobody sees or changes the other's data. A
+// foreign id behaves like one that doesn't exist
+describe("two users: contacts are separate", () => {
+  let otherId: string;
+
+  beforeEach(async () => {
+    otherId = await createTestUser("boris@example.com");
+  });
+
+  async function makeGroupFor(owner: string, name: string) {
+    const result = await createGroup(owner, name);
+    if (!result.ok) throw new Error(`Group "${name}" was not created`);
+    return result.group.id;
+  }
+
+  const names = (rows: { name: string }[]) => rows.map((row) => row.name);
+
+  it("lists, searches and counts only the user's own contacts", async () => {
+    await createContact(userId, contactInput({ name: "Анна Козлова" }));
+    await createContact(otherId, contactInput({ name: "Вера Козлова" }));
+    await createContact(otherId, contactInput({ name: "Дмитрий" }));
+
+    expect(names(await listContacts(userId, ""))).toEqual(["Анна Козлова"]);
+    expect(names(await listContacts(userId, "Козлова"))).toEqual([
+      "Анна Козлова",
+    ]);
+    expect(await listContacts(userId, "Дмитрий")).toEqual([]);
+    expect(await countContacts(userId)).toBe(1);
+    expect(names(await listContacts(otherId, ""))).toEqual([
+      "Вера Козлова",
+      "Дмитрий",
+    ]);
+    expect(await countContacts(otherId)).toBe(2);
+  });
+
+  it("shows nothing to a user who has no contacts", async () => {
+    await createContact(userId, contactInput());
+    const newcomer = await createTestUser("vera@example.com");
+
+    expect(await listContacts(newcomer, "")).toEqual([]);
+    expect(await countContacts(newcomer)).toBe(0);
+    expect(await listDueContacts(newcomer)).toEqual([]);
+  });
+
+  it("lists only the user's own contacts in the time-to-get-in-touch block", async () => {
+    const mine = await makeOverdueContact({ name: "Моя" });
+    const theirs = await createContact(
+      otherId,
+      contactInput({ name: "Чужая", notes: NOTES, contactFrequency: "week" }),
+    );
+    await setTimes(theirs, { lastContactedAt: daysAgo(24) });
+
+    expect(await dueNames()).toEqual(["Моя"]);
+    expect(names(await listDueContacts(otherId))).toEqual(["Чужая"]);
+    expect(mine).not.toBe(theirs);
+  });
+
+  it("filters by the user's own group only", async () => {
+    const theirGroup = await makeGroupFor(otherId, "Друзья");
+    await createContact(otherId, contactInput({ groupIds: [theirGroup] }));
+    await createContact(userId, contactInput({ name: "Моя" }));
+
+    expect(await listContacts(userId, "", theirGroup)).toEqual([]);
+    expect(await countContacts(userId, theirGroup)).toBe(0);
+  });
+
+  it("gives another user's contact as not found", async () => {
+    const id = await createContact(otherId, contactInput({ name: "Чужая" }));
+
+    expect(await getContact(userId, id)).toBeNull();
+    expect((await getContact(otherId, id))?.name).toBe("Чужая");
+  });
+
+  it("does not update another user's contact", async () => {
+    const id = await createContact(
+      otherId,
+      contactInput({ name: "Чужая", notes: "Заметка" }),
+    );
+
+    const updated = await updateContact(
+      userId,
+      id,
+      contactInput({ name: "Взломана", notes: "Другая заметка" }),
+    );
+
+    expect(updated).toBe(false);
+    const contact = await getContact(otherId, id);
+    expect(contact?.name).toBe("Чужая");
+    expect(contact?.notes).toBe("Заметка");
+  });
+
+  it("does not delete another user's contact", async () => {
+    const id = await createContact(otherId, contactInput({ name: "Чужая" }));
+
+    expect(await deleteContact(userId, id)).toBeNull();
+
+    expect((await getContact(otherId, id))?.name).toBe("Чужая");
+  });
+
+  it("does not mark another user's contact as contacted", async () => {
+    const id = await createContact(
+      otherId,
+      contactInput({ notes: NOTES, contactFrequency: "week" }),
+    );
+    await setTimes(id, { lastContactedAt: daysAgo(24) });
+
+    expect(await markContacted(userId, id)).toBeNull();
+
+    const contact = await getContact(otherId, id);
+    expect(contact?.lastContactedDay).toBe(addDays(contact!.today, -24));
+  });
+
+  it("does not undo another user's mark", async () => {
+    const id = await createContact(
+      otherId,
+      contactInput({ notes: NOTES, contactFrequency: "week" }),
+    );
+    await setTimes(id, { lastContactedAt: daysAgo(24) });
+    const mark = await markContacted(otherId, id);
+    if (!mark) throw new Error("Not marked");
+
+    expect(
+      await unmarkContacted(userId, id, mark.markedAt, mark.previous),
+    ).toBe(false);
+
+    const contact = await getContact(otherId, id);
+    expect(contact?.contactedToday).toBe(true);
+  });
+
+  it("saves a new contact without another user's group", async () => {
+    const mine = await makeGroupFor(userId, "Моя");
+    const theirs = await makeGroupFor(otherId, "Чужая");
+
+    const id = await createContact(
+      userId,
+      contactInput({ groupIds: [mine, theirs] }),
+    );
+
+    expect(await groupIdsOf(id)).toEqual([mine]);
+    const links = await getDb()
+      .select()
+      .from(contactGroups)
+      .where(eq(contactGroups.groupId, theirs));
+    expect(links).toEqual([]);
+  });
+
+  it("saves a contact without another user's group on update", async () => {
+    const mine = await makeGroupFor(userId, "Моя");
+    const theirs = await makeGroupFor(otherId, "Чужая");
+    const id = await createContact(userId, contactInput({ groupIds: [mine] }));
+
+    await updateContact(userId, id, contactInput({ groupIds: [theirs] }));
+
+    // Mine is unticked, the foreign one is skipped
+    expect(await groupIdsOf(id)).toEqual([]);
+    expect(await getDb().select().from(contactGroups)).toEqual([]);
+  });
+
+  it("does not change another user's group links when saving a contact", async () => {
+    const theirs = await makeGroupFor(otherId, "Чужая");
+    const theirContact = await createContact(
+      otherId,
+      contactInput({ groupIds: [theirs] }),
+    );
+
+    // The foreign contact's id with the user's own save: nothing happens
+    const updated = await updateContact(
+      userId,
+      theirContact,
+      contactInput({ groupIds: [] }),
+    );
+
+    expect(updated).toBe(false);
+    expect(await groupIdsOf(theirContact, otherId)).toEqual([theirs]);
   });
 });

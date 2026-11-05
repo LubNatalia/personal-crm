@@ -13,17 +13,22 @@ import { createGroup, deleteGroup, renameGroup } from "@/db/groups";
 import { parseContactForm, type ContactFormState } from "@/lib/contact-form";
 import { parseGroupName } from "@/lib/groups";
 import { isValidContactedMark } from "@/lib/keep-in-touch";
+import { requireUser } from "@/lib/session";
+
+// Every action starts with requireUser(): without a login nothing runs, and
+// the user's id goes to the data layer, which touches only that user's data
 
 export async function createContactAction(
   _prevState: ContactFormState,
   formData: FormData,
 ): Promise<ContactFormState> {
+  const user = await requireUser();
   const parsed = parseContactForm(formData);
   if (!parsed.ok) {
     return { status: "error", values: parsed.values, errors: parsed.errors };
   }
 
-  const id = await createContact(parsed.data);
+  const id = await createContact(user.id, parsed.data);
   revalidatePath("/");
   // Group counters are on this page
   revalidatePath("/groups");
@@ -36,6 +41,7 @@ export async function updateContactAction(
   _prevState: ContactFormState,
   formData: FormData,
 ): Promise<ContactFormState> {
+  const user = await requireUser();
   if (!Number.isInteger(id) || id <= 0) {
     throw new Error(`Invalid contact id: ${id}`);
   }
@@ -45,7 +51,7 @@ export async function updateContactAction(
     return { status: "error", values: parsed.values, errors: parsed.errors };
   }
 
-  const updated = await updateContact(id, parsed.data);
+  const updated = await updateContact(user.id, id, parsed.data);
   if (!updated) {
     throw new Error(`Contact ${id} not found`);
   }
@@ -57,11 +63,12 @@ export async function updateContactAction(
 }
 
 export async function deleteContactAction(id: number) {
+  const user = await requireUser();
   if (!Number.isInteger(id) || id <= 0) {
     throw new Error(`Invalid contact id: ${id}`);
   }
 
-  const name = await deleteContact(id);
+  const name = await deleteContact(user.id, id);
   revalidatePath("/");
   revalidatePath("/groups");
   revalidatePath(`/contacts/${id}`);
@@ -80,11 +87,12 @@ export type ContactedMark = { previous: string | null; markedAt: string };
 export async function markContactedAction(
   id: number,
 ): Promise<ContactedMark | null> {
+  const user = await requireUser();
   if (!Number.isInteger(id) || id <= 0) {
     throw new Error(`Invalid contact id: ${id}`);
   }
 
-  const mark = await markContacted(id);
+  const mark = await markContacted(user.id, id);
   // Only the contact page: the block on the home page shows ticks itself
   revalidatePath(`/contacts/${id}`);
   return mark;
@@ -96,6 +104,7 @@ export async function unmarkContactedAction(
   markedAt: string,
   previous: string | null,
 ) {
+  const user = await requireUser();
   if (!Number.isInteger(id) || id <= 0) {
     throw new Error(`Invalid contact id: ${id}`);
   }
@@ -104,7 +113,7 @@ export async function unmarkContactedAction(
     throw new Error(`Invalid undo data: ${markedAt}, ${previous}`);
   }
 
-  const undone = await unmarkContacted(id, markedAt, previous);
+  const undone = await unmarkContacted(user.id, id, markedAt, previous);
   revalidatePath(`/contacts/${id}`);
   return undone;
 }
@@ -130,12 +139,13 @@ function assertGroupId(id: number) {
 export async function createGroupAction(
   name: string,
 ): Promise<GroupActionResult<{ group: { id: number; name: string } }>> {
+  const user = await requireUser();
   const parsed = parseGroupName(name);
   if (!parsed.ok) {
     return { ok: false, error: parsed.error };
   }
 
-  const result = await createGroup(parsed.name);
+  const result = await createGroup(user.id, parsed.name);
   if (!result.ok) {
     return { ok: false, error: GROUP_ALREADY_EXISTS };
   }
@@ -148,13 +158,14 @@ export async function renameGroupAction(
   id: number,
   name: string,
 ): Promise<GroupActionResult> {
+  const user = await requireUser();
   assertGroupId(id);
   const parsed = parseGroupName(name);
   if (!parsed.ok) {
     return { ok: false, error: parsed.error };
   }
 
-  const result = await renameGroup(id, parsed.name);
+  const result = await renameGroup(user.id, id, parsed.name);
   revalidateGroupPages();
   if (result.ok) {
     return { ok: true };
@@ -167,9 +178,10 @@ export async function renameGroupAction(
 }
 
 export async function deleteGroupAction(id: number) {
+  const user = await requireUser();
   assertGroupId(id);
 
-  const name = await deleteGroup(id);
+  const name = await deleteGroup(user.id, id);
   revalidateGroupPages();
   // Already deleted (e.g. in another tab): the goal is reached, just show the list
   if (name === null) {

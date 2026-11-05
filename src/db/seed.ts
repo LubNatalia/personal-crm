@@ -1,17 +1,23 @@
-// Fills an empty contacts table with realistic test data.
+// Fills the contacts of the app's owner with realistic test data. The owner is
+// the user with the email OWNER_EMAIL; if there is no such user yet, it is
+// created (you sign in as it with a link from the email).
 // Usage: pnpm db:seed (on the server: node db/seed.ts inside the app image)
 import { createRequire } from "node:module";
 import { fakerRU as faker } from "@faker-js/faker";
-import { count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
   contactGroups,
   contacts,
   groups,
+  user,
   type ContactFrequency,
   type NewContact,
 } from "./schema.ts";
+
+// A contact before it gets its owner
+type SeedContact = Omit<NewContact, "userId">;
 
 // @next/env is CommonJS whose exports Node can't import by name; require
 // loads it the same way under tsx and under Node's own TypeScript support
@@ -189,7 +195,7 @@ function email(firstName: string, lastName: string) {
   return `${local}@${faker.helpers.arrayElement(EMAIL_DOMAINS)}`;
 }
 
-function makeContact(now: Date): NewContact {
+function makeContact(now: Date): SeedContact {
   const sex = faker.person.sexType();
   const firstName = faker.person.firstName(sex);
   const lastName = faker.person.lastName(sex);
@@ -221,7 +227,7 @@ function makeContact(now: Date): NewContact {
 // About every tenth contact gets a keep-in-touch frequency with dates in the
 // last months: some are already in the "time to get in touch" block, some
 // not yet. Runs after all contacts are made, so they stay the same as before
-function addKeepInTouch(rows: NewContact[], now: Date) {
+function addKeepInTouch(rows: SeedContact[], now: Date) {
   const recent = new Date(now.getTime() - 120 * DAY_MS);
   const weekAgo = new Date(now.getTime() - 7 * DAY_MS);
   let dueToday = 0;
@@ -269,15 +275,42 @@ async function main() {
     throw new Error("DATABASE_URL is not set");
   }
 
+  // The same writing as the login uses: no spaces, lower case
+  const ownerEmail = process.env.OWNER_EMAIL?.trim().toLowerCase();
+  if (!ownerEmail) {
+    throw new Error(
+      "OWNER_EMAIL is not set: add it to the env file, it is the email you sign in with",
+    );
+  }
+
   const sql = postgres(url, { max: 1 });
   const db = drizzle(sql);
 
   try {
+    // Made once; an existing user stays as it is
+    await db
+      .insert(user)
+      .values({
+        id: crypto.randomUUID(),
+        name: "",
+        email: ownerEmail,
+        emailVerified: true,
+      })
+      .onConflictDoNothing();
+    const [owner] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, ownerEmail));
+    const ownerId = owner.id;
+
     const [{ value: existing }] = await db
       .select({ value: count() })
-      .from(contacts);
+      .from(contacts)
+      .where(eq(contacts.userId, ownerId));
     if (existing > 0) {
-      console.log(`Seed skipped: contacts table already has ${existing} rows.`);
+      console.log(
+        `Seed skipped: ${ownerEmail} already has ${existing} contacts.`,
+      );
       return;
     }
 
@@ -291,18 +324,24 @@ async function main() {
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const inserted = await db
         .insert(contacts)
-        .values(rows.slice(i, i + BATCH_SIZE))
+        .values(
+          rows
+            .slice(i, i + BATCH_SIZE)
+            .map((row) => ({ ...row, userId: ownerId })),
+        )
         .returning({ id: contacts.id });
       contactIds.push(...inserted.map((row) => row.id));
     }
     console.log(`Seeded ${rows.length} contacts.`);
 
-    // A group that already exists is not made twice
+    // A group the owner already has is not made twice
     await db
       .insert(groups)
-      .values(GROUP_NAMES.map((name) => ({ name })))
+      .values(GROUP_NAMES.map((name) => ({ userId: ownerId, name })))
       .onConflictDoNothing();
-    const seededGroupIds = (await db.select().from(groups))
+    const seededGroupIds = (
+      await db.select().from(groups).where(eq(groups.userId, ownerId))
+    )
       .filter((group) =>
         GROUP_NAMES.some(
           (name) => name.toLowerCase() === group.name.toLowerCase(),

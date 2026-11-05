@@ -15,6 +15,10 @@ permissions:
 # A throwaway database inside the CI job: the password is not a secret
 env:
   DATABASE_URL: postgres://crm:crm@localhost:5432/crm
+  # Login settings for tests only: the secret is a throwaway, the mail goes to
+  # the Mailpit service container, never to a real address
+  BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+  SMTP_URL: smtp://localhost:1025
 
 jobs:
   checks:
@@ -34,6 +38,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # Catches the login emails sent by the auth tests
+      mailpit:
+        image: axllent/mailpit:v1.33.0
+        env:
+          # Without this every SMTP connection waits for a reverse DNS lookup
+          MP_SMTP_DISABLE_RDNS: "true"
+        ports:
+          - 1025:1025
+          - 8025:8025
     steps:
       - uses: actions/checkout@v7
 
@@ -76,6 +89,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # Catches the login emails; tests read the links from its API
+      mailpit:
+        image: axllent/mailpit:v1.33.0
+        env:
+          # Without this every SMTP connection waits for a reverse DNS lookup
+          MP_SMTP_DISABLE_RDNS: "true"
+        ports:
+          - 1025:1025
+          - 8025:8025
     steps:
       - uses: actions/checkout@v7
 

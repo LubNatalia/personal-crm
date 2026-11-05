@@ -23,7 +23,7 @@ RUN mkdir -p /db/node_modules/@faker-js /db/node_modules/@next \
  && cp -rL node_modules/drizzle-orm node_modules/postgres /db/node_modules/ \
  && cp -rL node_modules/@faker-js/faker /db/node_modules/@faker-js/ \
  && cp -rL node_modules/@next/env /db/node_modules/@next/ \
- && cp src/db/schema.ts src/db/migrate.ts src/db/seed.ts /db/ \
+ && cp src/db/schema.ts src/db/run-migrations.ts src/db/migrate.ts src/db/seed.ts /db/ \
  && echo '{ "type": "module" }' > /db/package.json
 
 FROM base AS runner

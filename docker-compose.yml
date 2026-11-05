@@ -19,5 +19,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # Catches every email the app sends (login links): nothing leaves the machine.
+  # SMTP on 1025, the inbox page on http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    restart: unless-stopped
+    environment:
+      # Without this every SMTP connection waits ~8 s for a reverse DNS lookup
+      MP_SMTP_DISABLE_RDNS: "true"
+    ports:
+      # Bound to localhost only, like the database
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
 volumes:
   db-data:

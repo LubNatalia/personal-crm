@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { signIn } from "./auth";
 import { resetDatabase, SEEDED_CONTACTS } from "./database";
 
 // The main scenario from specs/01-продуктовая-идея.md. Selectors are by role:
@@ -31,8 +32,9 @@ test("open the list, add a contact, find it and add a note", async ({
     NEW_CONTACT.name,
   ];
 
-  await test.step("open: the list shows all contacts", async () => {
-    await page.goto("/");
+  await test.step("sign in: the list shows all contacts", async () => {
+    // Ends on the home page
+    await signIn(page);
     await expect(
       listSummary(page, `Всего: ${SEEDED_CONTACTS.length}`),
     ).toBeVisible();
@@ -113,7 +115,8 @@ test("open the list, add a contact, find it and add a note", async ({
     const other = await browser.newContext();
     try {
       const otherPage = await other.newPage();
-      await otherPage.goto(new URL("/", page.url()).toString());
+      // The same user signs in in the other browser
+      await signIn(otherPage);
 
       await expect(
         listSummary(otherPage, `Всего: ${allNames.length}`),

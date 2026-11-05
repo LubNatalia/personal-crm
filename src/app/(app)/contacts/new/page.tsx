@@ -1,21 +1,21 @@
 import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { connection } from "next/server";
 import { ContactForm } from "@/components/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { EMPTY_CONTACT_VALUES } from "@/lib/contact-form";
 import { createContactAction } from "@/app/actions";
 import { listGroups } from "@/db/groups";
+import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Новый контакт — Личная CRM",
 };
 
 export default async function NewContactPage() {
-  // Rendered on request: at build time there is no database to read groups
-  await connection();
-  const groups = await listGroups();
+  // Rendered on request: it needs the signed-in user's groups
+  const user = await requireUser();
+  const groups = await listGroups(user.id);
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-5 lg:gap-6">

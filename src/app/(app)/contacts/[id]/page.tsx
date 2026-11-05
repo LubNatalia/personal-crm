@@ -12,6 +12,7 @@ import {
   formatLastContacted,
   formatOverdueNote,
 } from "@/lib/keep-in-touch";
+import { requireUser } from "@/lib/session";
 import { updateContactAction } from "@/app/actions";
 
 // In the same time zone as the due days, so the header and "last contact"
@@ -25,6 +26,7 @@ const dateFormat = new Intl.DateTimeFormat("ru-RU", {
 export default async function ContactPage({
   params,
 }: PageProps<"/contacts/[id]">) {
+  const user = await requireUser();
   const { id } = await params;
   const contactId = Number(id);
   if (!Number.isInteger(contactId) || contactId <= 0) {
@@ -32,8 +34,8 @@ export default async function ContactPage({
   }
 
   const [contact, groups] = await Promise.all([
-    getContact(contactId),
-    listGroups(),
+    getContact(user.id, contactId),
+    listGroups(user.id),
   ]);
   if (!contact) {
     notFound();

@@ -4,7 +4,7 @@ import { withDatabase } from "@/test/database-url.mts";
 import { truncateAllTables } from "@/test/test-database";
 import { getDb } from "./index";
 import { contacts } from "./schema";
-import { resetTestDb } from "./test-db";
+import { createTestUser, resetTestDb } from "./test-db";
 
 const url = process.env.DATABASE_URL as string;
 
@@ -17,46 +17,57 @@ describe("test database", () => {
   });
 
   it("is emptied before each test, ids start from 1 again", async () => {
-    await getDb().insert(contacts).values({ name: "Анна" });
+    const first = await createTestUser("anna@example.com");
+    await getDb().insert(contacts).values({ userId: first, name: "Анна" });
     await resetTestDb();
 
+    const second = await createTestUser("boris@example.com");
     const [contact] = await getDb()
       .insert(contacts)
-      .values({ name: "Борис" })
+      .values({ userId: second, name: "Борис" })
       .returning({ id: contacts.id });
     expect(await getDb().select().from(contacts)).toHaveLength(1);
     expect(contact.id).toBe(1);
   });
 
-  it("refuses to empty a database whose name does not end with _test", async () => {
-    // A throwaway database stands in for the working one: the guard must be
-    // checked without risking real data
-    const [{ name }] = await getDb().$client`select current_database() as name`;
-    const probeName = `${name.replace(/_test$/, "")}_guard_probe`;
-    const admin = postgres(withDatabase(url, "postgres"), {
-      max: 1,
-      onnotice: () => {},
-    });
-    try {
-      await admin.unsafe(`drop database if exists "${probeName}"`);
-      await admin.unsafe(`create database "${probeName}"`);
-
-      const probe = postgres(withDatabase(url, probeName), { max: 1 });
+  // Creating and dropping a database makes Postgres wait for a checkpoint,
+  // which takes longer after the heavy tests that ran before this one
+  it(
+    "refuses to empty a database whose name does not end with _test",
+    {
+      timeout: 30_000,
+    },
+    async () => {
+      // A throwaway database stands in for the working one: the guard must be
+      // checked without risking real data
+      const [{ name }] = await getDb()
+        .$client`select current_database() as name`;
+      const probeName = `${name.replace(/_test$/, "")}_guard_probe`;
+      const admin = postgres(withDatabase(url, "postgres"), {
+        max: 1,
+        onnotice: () => {},
+      });
       try {
-        await probe`create table keep (id int)`;
-        await probe`insert into keep values (1)`;
+        await admin.unsafe(`drop database if exists "${probeName}"`);
+        await admin.unsafe(`create database "${probeName}"`);
 
-        await expect(truncateAllTables(probe)).rejects.toThrow("_test");
+        const probe = postgres(withDatabase(url, probeName), { max: 1 });
+        try {
+          await probe`create table keep (id int)`;
+          await probe`insert into keep values (1)`;
 
-        const [{ count }] =
-          await probe`select count(*)::int as count from keep`;
-        expect(count).toBe(1);
+          await expect(truncateAllTables(probe)).rejects.toThrow("_test");
+
+          const [{ count }] =
+            await probe`select count(*)::int as count from keep`;
+          expect(count).toBe(1);
+        } finally {
+          await probe.end();
+        }
       } finally {
-        await probe.end();
+        await admin.unsafe(`drop database if exists "${probeName}"`);
+        await admin.end();
       }
-    } finally {
-      await admin.unsafe(`drop database if exists "${probeName}"`);
-      await admin.end();
-    }
-  });
+    },
+  );
 });

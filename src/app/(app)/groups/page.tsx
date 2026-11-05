@@ -5,6 +5,7 @@ import { GroupRow } from "@/components/group-row";
 import { StatusNotice } from "@/components/status-notice";
 import { Card, CardContent } from "@/components/ui/card";
 import { listGroupsWithCounts } from "@/db/groups";
+import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = {
   title: "Группы — Личная CRM",
@@ -13,11 +14,12 @@ export const metadata: Metadata = {
 export default async function GroupsPage({
   searchParams,
 }: PageProps<"/groups">) {
+  const user = await requireUser();
   const params = await searchParams;
   const deletedName =
     typeof params.deleted === "string" ? params.deleted : null;
 
-  const groups = await listGroupsWithCounts();
+  const groups = await listGroupsWithCounts(user.id);
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-5 lg:gap-6">

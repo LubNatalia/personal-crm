@@ -31,8 +31,15 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, "e2e/**"],
     // One test database shared by all files: they run one after another
     fileParallelism: false,
-    // Tests get the address of the test database, not the working one
-    env: { DATABASE_URL: testDatabaseUrl(workingUrl) },
+    env: {
+      // Tests get the address of the test database, not the working one
+      DATABASE_URL: testDatabaseUrl(workingUrl),
+      // Login settings for tests: a throwaway secret and Mailpit (started
+      // with `docker compose up -d`), so no real email can go out
+      BETTER_AUTH_SECRET: "vitest-only-secret-0123456789abcdef0123456789",
+      BETTER_AUTH_URL: "http://localhost:3000",
+      SMTP_URL: "smtp://localhost:1025",
+    },
     globalSetup: ["./src/test/global-setup.ts"],
   },
 });

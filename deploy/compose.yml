@@ -33,6 +33,10 @@ services:
     command: ["node", "db/migrate.ts"]
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      # Who gets the contacts and groups made before there were users. Needed
+      # only while the database holds such data: without it the migration
+      # fails on a database with data and the new version does not start
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
     depends_on:
       db:
         condition: service_healthy
@@ -46,6 +50,11 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      # Login: the secret signs the sessions, the address is the one links in
+      # emails point to, SMTP_URL is the mail server (Resend)
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL in .env}
+      SMTP_URL: ${SMTP_URL:?Set SMTP_URL in .env}
     ports:
       # Only nginx on this server talks to the app
       - "127.0.0.1:3000:3000"

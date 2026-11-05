@@ -24,7 +24,15 @@ export default defineConfig({
     command: `pnpm build && pnpm start --port ${PORT}`,
     // A static file: the server is ready before the e2e database is
     url: `${baseURL}/icon.svg`,
-    env: { DATABASE_URL: databaseUrl },
+    env: {
+      DATABASE_URL: databaseUrl,
+      // Login: links point at this server, emails go to Mailpit (started with
+      // `docker compose up -d`; a service container in CI), never to a real
+      // address. The secret is a throwaway
+      BETTER_AUTH_URL: baseURL,
+      BETTER_AUTH_SECRET: "e2e-only-secret-0123456789abcdef0123456789",
+      SMTP_URL: "smtp://localhost:1025",
+    },
     reuseExistingServer: false,
     timeout: 300_000,
     stdout: "ignore",

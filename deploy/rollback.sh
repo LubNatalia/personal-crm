@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Manual rollback, run by hand on the server: starts the previous app image again.
+# Manual rollback, run by hand on the server: starts the previous app image of
+# the environment this folder belongs to again (see lib.sh).
 # Migrations are not reverted: the previous version runs on the current database.
 set -euo pipefail
 

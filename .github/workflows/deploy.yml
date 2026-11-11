@@ -5,9 +5,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# One deploy at a time: a newer push waits until the running one finishes
+# One run at a time: a newer push waits until the running one finishes, so
+# deploys follow the merges in order. The server scripts also take a lock of
+# their own per environment (lib.sh, acquire_lock)
 concurrency:
-  group: deploy-prod
+  group: deploy
   cancel-in-progress: false
 
 jobs:
@@ -42,7 +44,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  # The same image goes to staging and prod, by the same script. The two jobs
+  # are independent: a broken staging deploy does not stop the prod one
+  deploy-staging:
     needs: build
     runs-on: ubuntu-latest
     # The first pull on the server is slow (~150 KB/s from GHCR)
@@ -53,8 +57,28 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Deploy to the server
-        run: bash deploy/ci.sh "${{ needs.build.outputs.image }}"
+      - name: Deploy to staging
+        run: bash deploy/ci.sh staging "${{ needs.build.outputs.image }}"
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-prod:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Deploy to prod
+        run: bash deploy/ci.sh prod "${{ needs.build.outputs.image }}"
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}

@@ -33,6 +33,12 @@ function createAuth() {
       // No session copy in a cookie: "Sign out" has to work at once
       cookieCache: { enabled: false },
     },
+    advanced: {
+      // The login cookie belongs only to the host it was set on (no Domain
+      // attribute): a login on test-app.lyna.tech never reaches app.lyna.tech
+      // or the other way round. This is Better Auth's default, kept explicit
+      crossSubDomainCookies: { enabled: false },
+    },
     hooks: {
       // The one place for the address rules, so a request that does not come
       // from the form passes the same checks as the form

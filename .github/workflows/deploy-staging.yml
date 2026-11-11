@@ -1,5 +1,8 @@
-name: Deploy
+name: Deploy staging
 
+# Every merge into main: build the app image (tagged with the commit SHA), push
+# it to GHCR and deploy it to staging. Prod is deployed only by hand, with the
+# Deploy prod workflow, and only a SHA that passed this one
 on:
   push:
     branches: [main]
@@ -9,7 +12,7 @@ on:
 # deploys follow the merges in order. The server scripts also take a lock of
 # their own per environment (lib.sh, acquire_lock)
 concurrency:
-  group: deploy
+  group: deploy-staging
   cancel-in-progress: false
 
 jobs:
@@ -21,6 +24,13 @@ jobs:
     outputs:
       image: ${{ steps.image.outputs.name }}
     steps:
+      # Deploy prod trusts green runs of this workflow on main only
+      - name: Only from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run Deploy staging from the main branch"
+          exit 1
+
       - uses: actions/checkout@v7
 
       - name: Image name
@@ -44,9 +54,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # The same image goes to staging and prod, by the same script. The two jobs
-  # are independent: a broken staging deploy does not stop the prod one
-  deploy-staging:
+  deploy:
     needs: build
     runs-on: ubuntu-latest
     # The first pull on the server is slow (~150 KB/s from GHCR)
@@ -58,28 +66,9 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Deploy to staging
-        run: bash deploy/ci.sh staging "${{ needs.build.outputs.image }}"
+        run: bash deploy/ci.sh staging "$IMAGE"
         env:
-          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          GHCR_USER: ${{ github.actor }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  deploy-prod:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      packages: read
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Deploy to prod
-        run: bash deploy/ci.sh prod "${{ needs.build.outputs.image }}"
-        env:
+          IMAGE: ${{ needs.build.outputs.image }}
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
           DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}

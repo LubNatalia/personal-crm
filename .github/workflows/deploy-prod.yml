@@ -1,0 +1,83 @@
+name: Deploy prod
+
+# Started only by hand: Actions -> Deploy prod -> Run workflow (from main).
+# Prod gets the same image staging got, and only a SHA that passed staging.
+# Order on the server (deploy/deploy.sh): backup -> migrations -> image -> smoke.
+# There is no automatic rollback: rolling back is this workflow with
+# "rollback" checked
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy. Empty: the SHA of the last green Deploy staging"
+        required: false
+        default: ""
+        type: string
+      rollback:
+        description: "Roll back: go back to the prod version before the current one (the SHA field is not used)"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # The first pull on the server is slow (~150 KB/s from GHCR)
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # Read the history of Deploy staging runs
+      actions: read
+      # Delete old image versions from GHCR
+      packages: write
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      GHCR_USER: ${{ github.actor }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      # The deploy scripts come from the branch the run starts on: only main's
+      # may touch prod
+      - name: Only from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run Deploy prod from the main branch"
+          exit 1
+
+      - uses: actions/checkout@v7
+
+      - name: Pick the version
+        id: version
+        if: ${{ !inputs.rollback }}
+        run: |
+          sha=$(bash deploy/prod-sha.sh "$WANTED_SHA")
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:$sha" >> "$GITHUB_OUTPUT"
+        env:
+          WANTED_SHA: ${{ inputs.sha }}
+
+      - name: Deploy to prod
+        if: ${{ !inputs.rollback }}
+        run: bash deploy/ci.sh prod "$IMAGE"
+        env:
+          IMAGE: ${{ steps.version.outputs.image }}
+
+      - name: Roll back prod
+        if: ${{ inputs.rollback }}
+        run: bash deploy/ci.sh prod --rollback
+
+      # Only after a good deploy or rollback (a failed step stops the job)
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Keep the 10 newest builds in GHCR
+        run: bash deploy/ghcr-cleanup.sh

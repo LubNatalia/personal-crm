@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Manual rollback, run by hand on the server: starts the previous app image of
-# the environment this folder belongs to again (see lib.sh).
+# Rollback: starts the previous app image of the environment this folder
+# belongs to again (see lib.sh), through deploy.sh, so prod gets a backup first.
+# Prod: run by the Deploy prod workflow with "rollback" checked (ci.sh
+# --rollback), never automatically. Staging: by hand on the server; works while
+# the previous staging image is still on the server.
 # Migrations are not reverted: the previous version runs on the current database.
 set -euo pipefail
 

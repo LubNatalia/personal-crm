@@ -56,3 +56,34 @@ smoke_test() {
   "${compose[@]}" logs --tail 50 app >&2
   return 1
 }
+
+# Backups live in backups/ of the prod folder, named
+# <date>_<version>_<kind>.dump. Every kind keeps its own 7 newest files:
+#   deploy          taken by deploy.sh before a deploy or rollback
+#   daily           taken by daily-backup.sh at 03:00 Moscow time
+#   manual          backup.sh run by hand
+#   before-restore  taken by restore.sh before it replaces the database
+# Files from before the kinds existed (no kind in the name) count as manual.
+backup_kinds="deploy daily manual before-restore"
+backups_to_keep=7
+
+backup_kind() {
+  local name suffix
+  name=$(basename "$1" .dump)
+  suffix="${name##*_}"
+  case " $backup_kinds " in
+    *" $suffix "*) echo "$suffix" ;;
+    *) echo manual ;;
+  esac
+}
+
+# Removes all but the newest backups of one kind. The names start with the
+# date, so they sort by time
+prune_backups() {
+  local kind="$1" file
+  for file in backups/*.dump; do
+    if [ -e "$file" ] && [ "$(backup_kind "$file")" = "$kind" ]; then
+      echo "$file"
+    fi
+  done | sort --reverse | tail -n +$((backups_to_keep + 1)) | xargs --no-run-if-empty rm --
+}

@@ -8,6 +8,7 @@ import {
   createContact,
   deleteContact,
   getContact,
+  listBirthdayContacts,
   listContacts,
   listDueContacts,
   markContacted,
@@ -36,6 +37,7 @@ function contactInput(overrides: Partial<ContactInput> = {}): ContactInput {
     email: null,
     notes: null,
     contactFrequency: null,
+    birthDate: null,
     groupIds: [],
     ...overrides,
   };
@@ -729,6 +731,181 @@ describe("keep in touch: contacts from before it", () => {
     expect(contact.dueDay).toBeNull();
     expect(contact.notes).toBe(NOTES);
     expect(await dueNames()).toEqual([]);
+  });
+});
+
+describe("birthdays: saving the date", () => {
+  async function birthDateOf(id: number) {
+    const contact = await getContact(userId, id);
+    return contact && [contact.birthDay, contact.birthMonth, contact.birthYear];
+  }
+
+  it("saves a new contact with a date and a year", async () => {
+    const id = await createContact(
+      userId,
+      contactInput({ birthDate: { day: 14, month: 11, year: 1990 } }),
+    );
+
+    expect(await birthDateOf(id)).toEqual([14, 11, 1990]);
+  });
+
+  it("saves a date without a year", async () => {
+    const id = await createContact(
+      userId,
+      contactInput({ birthDate: { day: 29, month: 2, year: null } }),
+    );
+
+    expect(await birthDateOf(id)).toEqual([29, 2, null]);
+  });
+
+  it("saves a new contact without a date", async () => {
+    const id = await createContact(userId, contactInput());
+
+    expect(await birthDateOf(id)).toEqual([null, null, null]);
+  });
+
+  it("changes the date on update", async () => {
+    const id = await createContact(
+      userId,
+      contactInput({ birthDate: { day: 14, month: 11, year: 1990 } }),
+    );
+
+    await updateContact(
+      userId,
+      id,
+      contactInput({ birthDate: { day: 3, month: 3, year: null } }),
+    );
+
+    expect(await birthDateOf(id)).toEqual([3, 3, null]);
+  });
+
+  it("removes the date with null", async () => {
+    const id = await createContact(
+      userId,
+      contactInput({ birthDate: { day: 14, month: 11, year: 1990 } }),
+    );
+
+    await updateContact(userId, id, contactInput({ birthDate: null }));
+
+    expect(await birthDateOf(id)).toEqual([null, null, null]);
+  });
+
+  it("keeps frequency, last contact and groups as before", async () => {
+    const friends = await makeGroup("Друзья");
+    const id = await createContact(
+      userId,
+      contactInput({
+        notes: NOTES,
+        contactFrequency: "month",
+        groupIds: [friends],
+      }),
+    );
+    const before = await getContact(userId, id);
+
+    await updateContact(
+      userId,
+      id,
+      contactInput({
+        notes: NOTES,
+        contactFrequency: "month",
+        groupIds: [friends],
+        birthDate: { day: 14, month: 11, year: 1990 },
+      }),
+    );
+
+    const after = await getContact(userId, id);
+    expect(after?.contactFrequency).toBe("month");
+    expect(after?.lastContactedAt).toEqual(before?.lastContactedAt);
+    expect(after?.frequencySetAt).toEqual(before?.frequencySetAt);
+    expect(after?.groupIds).toEqual([friends]);
+    expect(await birthDateOf(id)).toEqual([14, 11, 1990]);
+  });
+});
+
+describe("listBirthdayContacts", () => {
+  it("gives only contacts with a birth date", async () => {
+    const anna = await createContact(
+      userId,
+      contactInput({ birthDate: { day: 14, month: 11, year: 1990 } }),
+    );
+    const boris = await createContact(
+      userId,
+      contactInput({
+        name: "Борис",
+        birthDate: { day: 3, month: 3, year: null },
+      }),
+    );
+    await createContact(userId, contactInput({ name: "Вера" }));
+
+    const rows = await listBirthdayContacts(userId);
+
+    expect([...rows].sort((a, b) => a.id - b.id)).toMatchObject([
+      { id: anna, name: "Анна", birthDay: 14, birthMonth: 11, birthYear: 1990 },
+      { id: boris, name: "Борис", birthDay: 3, birthMonth: 3, birthYear: null },
+    ]);
+  });
+
+  it("gives only the user's own contacts", async () => {
+    const otherId = await createTestUser("boris@example.com");
+    await createContact(
+      otherId,
+      contactInput({ birthDate: { day: 14, month: 11, year: 1990 } }),
+    );
+
+    expect(await listBirthdayContacts(userId)).toEqual([]);
+  });
+
+  it("gives today in the app's time zone", async () => {
+    await createContact(
+      userId,
+      contactInput({ birthDate: { day: 14, month: 11, year: null } }),
+    );
+    const [{ today }] = await getDb().$client<{ today: string }[]>`
+      select to_char((now() at time zone ${APP_TIME_ZONE})::date, 'YYYY-MM-DD') as today`;
+
+    const [row] = await listBirthdayContacts(userId);
+
+    expect(row.today).toBe(today);
+  });
+});
+
+// The database itself refuses a birth date that can't be right, whatever
+// the code sends
+describe("birthdays: database checks", () => {
+  type BirthColumns = {
+    day: number | null;
+    month: number | null;
+    year: number | null;
+  };
+
+  // Plain SQL, bypassing the data layer, as a buggy query would do
+  async function insertBirthDate({ day, month, year }: BirthColumns) {
+    await getDb().$client`
+      insert into contacts (user_id, name, birth_day, birth_month, birth_year)
+      values (${userId}, 'Анна', ${day}, ${month}, ${year})`;
+  }
+
+  it.each([
+    { day: 14, month: 11, year: 1990 },
+    { day: 3, month: 3, year: null },
+    { day: null, month: null, year: null },
+  ])("accepts %o", async (columns) => {
+    await expect(insertBirthDate(columns)).resolves.toBeUndefined();
+  });
+
+  it.each([
+    { day: 14, month: null, year: null },
+    { day: null, month: 11, year: null },
+    { day: null, month: null, year: 1990 },
+    { day: 14, month: 13, year: null },
+    { day: 0, month: 11, year: null },
+    { day: 32, month: 11, year: null },
+    { day: 14, month: 11, year: 1899 },
+  ])("rejects %o", async (columns) => {
+    // 23514: a CHECK constraint is violated
+    await expect(insertBirthDate(columns)).rejects.toMatchObject({
+      code: "23514",
+    });
   });
 });
 

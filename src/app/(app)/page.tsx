@@ -2,6 +2,7 @@ import { Plus, Search, Tags } from "lucide-react";
 import Form from "next/form";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BirthdayContacts } from "@/components/birthday-contacts";
 import { ContactAvatar } from "@/components/contact-avatar";
 import { DueContacts } from "@/components/due-contacts";
 import { ScrollIntoViewRow } from "@/components/scroll-into-view-row";
@@ -17,7 +18,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { countContacts, listContacts, listDueContacts } from "@/db/contacts";
+import {
+  countContacts,
+  listBirthdayContacts,
+  listContacts,
+  listDueContacts,
+} from "@/db/contacts";
 import { listGroups } from "@/db/groups";
 import { formatEmptyListMessage, formatListSummary } from "@/lib/contact-list";
 import { requireUser } from "@/lib/session";
@@ -60,12 +66,14 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
   const group = groups.find((item) => item.id === requestedGroupId) ?? null;
   const groupId = group?.id ?? null;
 
-  const [items, total, dueContacts] = await Promise.all([
+  // The "birthdays soon" and "time to get in touch" blocks are hidden while
+  // searching and while a group is chosen
+  const showBlocks = !query && !group;
+  const [items, total, birthdayContacts, dueContacts] = await Promise.all([
     listContacts(user.id, query, groupId),
     countContacts(user.id, groupId),
-    // The "time to get in touch" block is hidden while searching and while
-    // a group is chosen
-    query || group ? null : listDueContacts(user.id),
+    showBlocks ? listBirthdayContacts(user.id) : null,
+    showBlocks ? listDueContacts(user.id) : null,
   ]);
   const added = items.find((contact) => contact.id === addedId);
   const view = { query, groupName: group?.name ?? null };
@@ -104,6 +112,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
         <StatusNotice>Контакт «{deletedName}» удалён.</StatusNotice>
       )}
 
+      {birthdayContacts && <BirthdayContacts contacts={birthdayContacts} />}
       {dueContacts && <DueContacts contacts={dueContacts} />}
 
       <Card>

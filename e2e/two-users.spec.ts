@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+import { APP_TIME_ZONE } from "../src/lib/keep-in-touch";
 import { signIn } from "./auth";
-import { resetDatabase } from "./database";
+import { resetDatabase, withDatabase } from "./database";
 
 // The success criterion of specs/02-пользователи-вход.md: two people use the
 // app and neither sees the other's contacts or groups, in either direction.
@@ -161,6 +162,58 @@ test("two people do not see each other's contacts and groups", async ({
       await expect(
         pageA.getByRole("checkbox", { name: A.group }),
       ).toBeChecked();
+    });
+  } finally {
+    await contextA.close();
+    await contextB.close();
+  }
+});
+
+test("another person's birthday is not in the «Скоро день рождения» block", async ({
+  browser,
+}) => {
+  const contextA = await browser.newContext();
+  const contextB = await browser.newContext();
+  try {
+    const pageA = await contextA.newPage();
+    const pageB = await contextB.newPage();
+    const birthdayBlock = (page: Page) =>
+      page.getByRole("region", { name: "Скоро день рождения" });
+    // Today in the app's time zone, from the database like the app does
+    const [today] = await withDatabase(
+      (sql) => sql<{ day: number; month: number }[]>`
+        select extract(day from d)::int as day, extract(month from d)::int as month
+        from (select (now() at time zone ${APP_TIME_ZONE})::date as d) as t
+      `,
+    );
+
+    await test.step("A adds a contact whose birthday is today", async () => {
+      await signIn(pageA, A.email);
+      await pageA.goto("/contacts/new");
+      await pageA.getByRole("textbox", { name: "Имя" }).fill(A.contact);
+      await pageA
+        .getByRole("combobox", { name: "День", exact: true })
+        .selectOption(String(today.day));
+      await pageA
+        .getByRole("combobox", { name: "Месяц", exact: true })
+        .selectOption(String(today.month));
+      await pageA.getByRole("button", { name: "Добавить контакт" }).click();
+      await expect(pageA).toHaveURL(/\/\?added=\d+$/);
+      await expect(
+        birthdayBlock(pageA).getByRole("link", { name: A.contact }),
+      ).toBeVisible();
+    });
+
+    await test.step("B, a new user, has no block at all", async () => {
+      await signIn(pageB, B.email);
+      await expect(
+        pageB.getByText("Контактов пока нет. Добавьте первый."),
+      ).toBeVisible();
+      await expect(birthdayBlock(pageB)).toBeHidden();
+      await expect(
+        pageB.getByRole("region", { name: /^Пора связаться/ }),
+      ).toBeHidden();
+      await expect(pageB.getByText(A.contact)).toBeHidden();
     });
   } finally {
     await contextA.close();

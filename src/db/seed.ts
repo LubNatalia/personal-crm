@@ -3,7 +3,7 @@
 // created (you sign in as it with a link from the email).
 // Usage: pnpm db:seed (on the server: node db/seed.ts inside the app image)
 import { createRequire } from "node:module";
-import { fakerRU as faker } from "@faker-js/faker";
+import { base, Faker, fakerRU as faker } from "@faker-js/faker";
 import { count, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -255,6 +255,66 @@ function addKeepInTouch(rows: SeedContact[], now: Date) {
   }
 }
 
+// Birth dates come from a generator of their own: the shared one also picks
+// the groups after the contacts are stored, and its sequence must not change
+const birthdayFaker = new Faker({ locale: base });
+
+// "Today" in the app's time zone (Europe/Moscow), as the "birthdays soon"
+// block counts it. Kept here: the seed runs without the app's path aliases
+function moscowToday(now: Date) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Moscow",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    })
+      .formatToParts(now)
+      .map((part) => [part.type, Number(part.value)]),
+  );
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+}
+
+function isLeapYear(year: number) {
+  return new Date(Date.UTC(year, 1, 29)).getUTCDate() === 29;
+}
+
+// About a third of the contacts get a birth date, a quarter of them without
+// the year. The first three are today, in 2 and in 5 days, so the
+// "birthdays soon" block is never empty
+function addBirthDates(rows: SeedContact[], now: Date) {
+  birthdayFaker.seed(20261111);
+  const today = moscowToday(now);
+  const nearOffsets = [0, 2, 5];
+
+  for (const row of rows) {
+    if (!birthdayFaker.datatype.boolean(0.33)) continue;
+    const born = birthdayFaker.date.birthdate({
+      mode: "age",
+      min: 18,
+      max: 80,
+      refDate: now,
+    });
+    const offset = nearOffsets.shift();
+    const day =
+      offset === undefined ? born : new Date(today.getTime() + offset * DAY_MS);
+    const withYear = birthdayFaker.datatype.boolean(0.75);
+    let year: number | null = withYear ? born.getUTCFullYear() : null;
+    // February 29 exists only in a leap year
+    if (
+      year !== null &&
+      day.getUTCMonth() === 1 &&
+      day.getUTCDate() === 29 &&
+      !isLeapYear(year)
+    ) {
+      year = null;
+    }
+    row.birthDay = day.getUTCDate();
+    row.birthMonth = day.getUTCMonth() + 1;
+    row.birthYear = year;
+  }
+}
+
 // Picks the groups of every contact: about 40% are in one group, 10% in two,
 // the rest in none. Runs after all contacts are made, so they stay the same
 // as before
@@ -319,6 +379,7 @@ async function main() {
     const now = new Date();
     const rows = Array.from({ length: SEED_COUNT }, () => makeContact(now));
     addKeepInTouch(rows, now);
+    addBirthDates(rows, now);
 
     const contactIds: number[] = [];
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {

@@ -90,6 +90,9 @@ export default async function ContactPage({
               email: contact.email ?? "",
               notes: contact.notes ?? "",
               contactFrequency: contact.contactFrequency ?? "",
+              birthDay: contact.birthDay?.toString() ?? "",
+              birthMonth: contact.birthMonth?.toString() ?? "",
+              birthYear: contact.birthYear?.toString() ?? "",
               groupIds: contact.groupIds.map(String),
             }}
             submitLabel="Сохранить"

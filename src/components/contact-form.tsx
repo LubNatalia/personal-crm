@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { BirthDateField } from "@/components/birth-date-field";
 import { ContactedTodayCheckbox } from "@/components/contacted-checkbox";
 import { GroupsField } from "@/components/groups-field";
 import { Button } from "@/components/ui/button";
@@ -187,6 +188,13 @@ function ContactFormBody({
           )}
           {keepInTouch && <KeepInTouchLines status={keepInTouch} />}
         </div>
+        <BirthDateField
+          id={`${idPrefix}-birthDate`}
+          day={values.birthDay}
+          month={values.birthMonth}
+          year={values.birthYear}
+          error={errors.birthDate}
+        />
       </div>
 
       <GroupsField

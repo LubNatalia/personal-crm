@@ -10,6 +10,7 @@ import {
   updateContact,
 } from "@/db/contacts";
 import { createGroup, deleteGroup, renameGroup } from "@/db/groups";
+import { todayInAppTimeZone } from "@/lib/birthdays";
 import { parseContactForm, type ContactFormState } from "@/lib/contact-form";
 import { parseGroupName } from "@/lib/groups";
 import { isValidContactedMark } from "@/lib/keep-in-touch";
@@ -23,7 +24,7 @@ export async function createContactAction(
   formData: FormData,
 ): Promise<ContactFormState> {
   const user = await requireUser();
-  const parsed = parseContactForm(formData);
+  const parsed = parseContactForm(formData, todayInAppTimeZone());
   if (!parsed.ok) {
     return { status: "error", values: parsed.values, errors: parsed.errors };
   }
@@ -46,7 +47,7 @@ export async function updateContactAction(
     throw new Error(`Invalid contact id: ${id}`);
   }
 
-  const parsed = parseContactForm(formData);
+  const parsed = parseContactForm(formData, todayInAppTimeZone());
   if (!parsed.ok) {
     return { status: "error", values: parsed.values, errors: parsed.errors };
   }

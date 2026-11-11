@@ -1,4 +1,5 @@
 import type { ContactFrequency } from "@/db/schema";
+import { parseBirthDate, type BirthDate } from "@/lib/birthdays";
 import { isContactFrequency } from "@/lib/keep-in-touch";
 
 const TEXT_FIELDS = [
@@ -12,7 +13,14 @@ const TEXT_FIELDS = [
 
 type TextField = (typeof TEXT_FIELDS)[number];
 
-export const CONTACT_FIELDS = [...TEXT_FIELDS, "contactFrequency"] as const;
+// The three parts of the "birth date" field: day and month lists, year input
+const BIRTH_DATE_FIELDS = ["birthDay", "birthMonth", "birthYear"] as const;
+
+export const CONTACT_FIELDS = [
+  ...TEXT_FIELDS,
+  "contactFrequency",
+  ...BIRTH_DATE_FIELDS,
+] as const;
 
 export type ContactField = (typeof CONTACT_FIELDS)[number];
 
@@ -22,7 +30,10 @@ export type ContactValues = Record<ContactField, string> & {
   groupIds: string[];
 };
 
-export type ContactErrors = Partial<Record<ContactField | "groupIds", string>>;
+// The birth date has one error for its three parts
+export type ContactErrors = Partial<
+  Record<ContactField | "groupIds" | "birthDate", string>
+>;
 
 // Values ready to be stored: optional fields become null when empty
 export type ContactInput = {
@@ -33,6 +44,7 @@ export type ContactInput = {
   email: string | null;
   notes: string | null;
   contactFrequency: ContactFrequency | null;
+  birthDate: BirthDate | null;
   // Ids of the groups the contact is in, without repeats
   groupIds: number[];
 };
@@ -51,6 +63,9 @@ export const EMPTY_CONTACT_VALUES: ContactValues = {
   email: "",
   notes: "",
   contactFrequency: "",
+  birthDay: "",
+  birthMonth: "",
+  birthYear: "",
   groupIds: [],
 };
 
@@ -78,7 +93,11 @@ type ParseResult =
   | { ok: true; values: ContactValues; data: ContactInput }
   | { ok: false; values: ContactValues; errors: ContactErrors };
 
-export function parseContactForm(formData: FormData): ParseResult {
+// `today` is "YYYY-MM-DD" in APP_TIME_ZONE, for the birth date checks
+export function parseContactForm(
+  formData: FormData,
+  today: string,
+): ParseResult {
   const values = {
     ...Object.fromEntries(
       CONTACT_FIELDS.map((field) => {
@@ -118,7 +137,15 @@ export function parseContactForm(formData: FormData): ParseResult {
     errors.groupIds = "Выберите группы из списка";
   }
 
-  if (Object.keys(errors).length > 0) {
+  const birthDate = parseBirthDate(
+    { day: values.birthDay, month: values.birthMonth, year: values.birthYear },
+    today,
+  );
+  if (!birthDate.ok) {
+    errors.birthDate = birthDate.error;
+  }
+
+  if (Object.keys(errors).length > 0 || !birthDate.ok) {
     return { ok: false, values, errors };
   }
 
@@ -135,6 +162,7 @@ export function parseContactForm(formData: FormData): ParseResult {
       contactFrequency: isContactFrequency(contactFrequency)
         ? contactFrequency
         : null,
+      birthDate: birthDate.value,
       groupIds: [...new Set(values.groupIds.map(Number))],
     },
   };

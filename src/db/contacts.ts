@@ -13,6 +13,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import type { BirthDate } from "@/lib/birthdays";
 import type { ContactInput } from "@/lib/contact-form";
 import {
   APP_TIME_ZONE,
@@ -94,6 +95,25 @@ export async function listDueContacts(userId: string) {
       sql`${contacts.name} collate "ru-x-icu"`,
       asc(contacts.id),
     );
+}
+
+// Contacts with a birth date, for the "birthdays soon" block. Which of them
+// are coming up is worked out by upcomingBirthdays(); `today` comes from the
+// same clock as in the "time to get in touch" block
+export async function listBirthdayContacts(userId: string) {
+  return getDb()
+    .select({
+      id: contacts.id,
+      name: contacts.name,
+      // Never null here: the filter keeps only contacts with a date, and the
+      // database requires the day and the month together
+      birthDay: sql<number>`${contacts.birthDay}`,
+      birthMonth: sql<number>`${contacts.birthMonth}`,
+      birthYear: contacts.birthYear,
+      today: dueFields.today,
+    })
+    .from(contacts)
+    .where(and(eq(contacts.userId, userId), isNotNull(contacts.birthDay)));
 }
 
 // Ids of the groups the contact is in, as an array in one column
@@ -210,15 +230,25 @@ async function saveContactGroups(
     .onConflictDoNothing();
 }
 
+// The birth date goes into three columns; null clears all of them
+function birthDateColumns(birthDate: BirthDate | null) {
+  return {
+    birthDay: birthDate?.day ?? null,
+    birthMonth: birthDate?.month ?? null,
+    birthYear: birthDate?.year ?? null,
+  };
+}
+
 export async function createContact(
   userId: string,
-  { groupIds, ...input }: ContactInput,
+  { groupIds, birthDate, ...input }: ContactInput,
 ) {
   return getDb().transaction(async (tx) => {
     const [row] = await tx
       .insert(contacts)
       .values({
         ...input,
+        ...birthDateColumns(birthDate),
         userId,
         // Notes on a new contact count as being in touch on the day it's added
         lastContactedAt: input.notes ? sql`now()` : null,
@@ -233,7 +263,7 @@ export async function createContact(
 export async function updateContact(
   userId: string,
   id: number,
-  { groupIds, ...input }: ContactInput,
+  { groupIds, birthDate, ...input }: ContactInput,
 ) {
   return getDb().transaction(async (tx) => {
     // Locks the row until the end of the transaction, so a save from
@@ -263,6 +293,7 @@ export async function updateContact(
       .update(contacts)
       .set({
         ...input,
+        ...birthDateColumns(birthDate),
         updatedAt: new Date(),
         // Undefined leaves the column as it is
         lastContactedAt: hasNewNoteLines(previous.notes, input.notes)

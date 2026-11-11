@@ -29,6 +29,13 @@
       "when": 1793725400098,
       "tag": "0003_gigantic_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794430220924,
+      "tag": "0004_handy_katie_power",
+      "breakpoints": true
     }
   ]
 }

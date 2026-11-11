@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Dumps the production database into backups/ and prints the path of the file.
+# Works only in the prod folder: there are no staging backups.
 # The file name holds the app version running now (from current-image), so a
 # backup taken by deploy.sh names the version from before the deploy.
 # Needs the db container running.
@@ -12,6 +13,10 @@ suffix="${1:-}"
 
 cd "$(dirname "$0")"
 source ./lib.sh
+if [ "$env_name" != prod ]; then
+  echo "Backups are made only on prod: the staging database is a copy of a prod backup" >&2
+  exit 1
+fi
 require_env
 
 current=$(cat current-image 2>/dev/null || true)

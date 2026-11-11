@@ -1,13 +1,15 @@
-# Production stack on the server (/opt/crm/prod), started by deploy.sh.
-# Values come from .env next to this file; APP_IMAGE is set by deploy.sh.
-name: prod
+# One stack for every environment on the server, started by deploy.sh from the
+# environment's folder (/opt/crm/prod, /opt/crm/staging). The project name
+# (-p prod, -p staging) keeps the containers and the database volume apart.
+# Values come from .env next to this file; APP_IMAGE and APP_PORT are set by
+# the scripts (lib.sh, deploy.sh).
 
-# Container logs are capped: at most 3 files of 10 MB per container
+# Container logs go to the server journal (journald): they outlive deploys and
+# rollbacks, and the journal's own size limit drops the oldest lines
 x-logging: &logging
-  driver: json-file
+  driver: journald
   options:
-    max-size: "10m"
-    max-file: "3"
+    tag: "{{.Name}}"
 
 services:
   db:
@@ -25,6 +27,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    # Two environments and the landing share one server: none may take it all
+    mem_limit: ${DB_MEM_LIMIT:-256m}
     logging: *logging
 
   # One-off container from the app image: applies migrations and exits
@@ -43,6 +47,7 @@ services:
     restart: "no"
     # Not started by "up": deploy.sh runs it explicitly
     profiles: [tools]
+    mem_limit: ${APP_MEM_LIMIT:-512m}
     logging: *logging
 
   app:
@@ -51,16 +56,18 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       # Login: the secret signs the sessions, the address is the one links in
-      # emails point to, SMTP_URL is the mail server (Resend)
+      # emails point to (each environment its own), SMTP_URL is the mail
+      # server (Resend, each environment its own key)
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL in .env}
       SMTP_URL: ${SMTP_URL:?Set SMTP_URL in .env}
     ports:
-      # Only nginx on this server talks to the app
-      - "127.0.0.1:3000:3000"
+      # Only nginx on this server talks to the app: prod on 3000, staging on 3001
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
     depends_on:
       db:
         condition: service_healthy
+    mem_limit: ${APP_MEM_LIMIT:-512m}
     logging: *logging
 
 volumes:

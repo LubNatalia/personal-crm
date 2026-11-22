@@ -60,6 +60,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Known vulnerabilities in the packages the app ships with; dev tools
+      # (devDependencies) never reach the server, so they are not checked
+      - name: Dependency audit
+        run: pnpm audit --prod
+
       - name: Lint
         run: pnpm lint
 

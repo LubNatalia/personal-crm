@@ -222,6 +222,14 @@
 - Пересоздать приложение стенда после правки его `.env`: `cd /opt/crm/staging && APP_PORT=3001 APP_IMAGE=$(cat current-image) docker compose -p staging -f compose.yml up -d --force-recreate app`
 - Тестовые данные (создаются у пользователя `OWNER_EMAIL`, срабатывают, только если у него ещё нет контактов): `cd /opt/crm/prod && APP_IMAGE=$(cat current-image) docker compose -p prod -f compose.yml run --rm migrate node db/seed.ts`
 
+### Заголовки безопасности
+
+- Заголовки защиты (HSTS, CSP, запрет фреймов, Referrer-Policy, nosniff, Permissions-Policy) ставит само приложение - в `next.config.ts`; там же выключен `X-Powered-By`. На сервере для них ничего настраивать не нужно.
+- Версию nginx в заголовке `Server` прячет одна строка в общей настройке nginx на сервере - она действует на весь сервер, в том числе на лендинг. Её нет в репозитории: при настройке нового сервера её нужно сделать руками (`ssh crm`):
+  1. в `/etc/nginx/nginx.conf`, в блоке `http`, строка `server_tokens off;` (в Ubuntu там уже есть `server_tokens build;` - заменить на `off`): `sudo sed -i 's/server_tokens build;/server_tokens off;/' /etc/nginx/nginx.conf`
+  2. проверить и применить: `sudo nginx -t && sudo systemctl reload nginx`
+  3. проверить снаружи: `curl -sI https://app.lyna.tech/login | grep -i '^server'` - должно быть просто `Server: nginx`, без цифр версии.
+
 ## Тест-стенд
 
 https://test-app.lyna.tech - копия прода, чтобы проверять новую версию на настоящих данных до того, как она понадобится на проде. Выкатывается сама при каждом влитии в `main` (см. «Выкатить на тест-стенд»); на прод попадает только версия, прошедшая стенд.

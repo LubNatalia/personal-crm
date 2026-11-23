@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { getDb } from "./index";
@@ -322,5 +323,22 @@ describe("two users: groups are separate", () => {
       "Аналитики",
     ]);
     expect(await groupIdsOf(contact)).toEqual([theirs]);
+  });
+});
+
+describe("database errors", () => {
+  it("do not carry the group name into the server log", async () => {
+    // No such user: the database refuses the row (foreign key)
+    const error = await createGroup("no-such-user", "Тайный кружок").then(
+      () => null,
+      (thrown: unknown) => thrown,
+    );
+
+    // What Node.js prints for an uncaught error
+    const logged = inspect(error, { depth: null });
+    expect(logged).toContain("createGroup");
+    expect(logged).toContain("23503");
+    expect(logged).not.toContain("Тайный кружок");
+    expect(logged).not.toContain("no-such-user");
   });
 });

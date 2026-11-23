@@ -22,6 +22,7 @@ import {
 } from "@/lib/keep-in-touch";
 import { hasNewNoteLines } from "@/lib/notes";
 import { getDb } from "./index";
+import { withSafeDbErrors } from "./safe-errors";
 import {
   contactGroups,
   contacts,
@@ -69,9 +70,13 @@ const dueFields = {
 
 // Every function takes the user's id first and touches only that user's
 // contacts: another user's contact id behaves like one that doesn't exist
+// Each is wrapped in withSafeDbErrors: a failed query leaves it without the
+// values it carried (see safe-errors.ts)
 
 // Contacts it's time to get in touch with: the most overdue first, then by name
-export async function listDueContacts(userId: string) {
+export const listDueContacts = withSafeDbErrors(async function listDueContacts(
+  userId: string,
+) {
   return getDb()
     .select({
       id: contacts.id,
@@ -95,26 +100,28 @@ export async function listDueContacts(userId: string) {
       sql`${contacts.name} collate "ru-x-icu"`,
       asc(contacts.id),
     );
-}
+});
 
 // Contacts with a birth date, for the "birthdays soon" block. Which of them
 // are coming up is worked out by upcomingBirthdays(); `today` comes from the
 // same clock as in the "time to get in touch" block
-export async function listBirthdayContacts(userId: string) {
-  return getDb()
-    .select({
-      id: contacts.id,
-      name: contacts.name,
-      // Never null here: the filter keeps only contacts with a date, and the
-      // database requires the day and the month together
-      birthDay: sql<number>`${contacts.birthDay}`,
-      birthMonth: sql<number>`${contacts.birthMonth}`,
-      birthYear: contacts.birthYear,
-      today: dueFields.today,
-    })
-    .from(contacts)
-    .where(and(eq(contacts.userId, userId), isNotNull(contacts.birthDay)));
-}
+export const listBirthdayContacts = withSafeDbErrors(
+  async function listBirthdayContacts(userId: string) {
+    return getDb()
+      .select({
+        id: contacts.id,
+        name: contacts.name,
+        // Never null here: the filter keeps only contacts with a date, and the
+        // database requires the day and the month together
+        birthDay: sql<number>`${contacts.birthDay}`,
+        birthMonth: sql<number>`${contacts.birthMonth}`,
+        birthYear: contacts.birthYear,
+        today: dueFields.today,
+      })
+      .from(contacts)
+      .where(and(eq(contacts.userId, userId), isNotNull(contacts.birthDay)));
+  },
+);
 
 // Ids of the groups the contact is in, as an array in one column
 const groupIdsField = sql<number[]>`array(
@@ -135,7 +142,7 @@ function inGroup(groupId: number | null | undefined) {
 
 // Group names are put on the labels by the page, from the list of groups:
 // a row carries only ids
-export async function listContacts(
+export const listContacts = withSafeDbErrors(async function listContacts(
   userId: string,
   nameQuery: string,
   groupId?: number | null,
@@ -163,18 +170,24 @@ export async function listContacts(
       // ICU Russian collation: correct alphabetical order including "Ё"
       .orderBy(sql`${contacts.name} collate "ru-x-icu"`, asc(contacts.id))
   );
-}
+});
 
 // All contacts, or the ones in a group
-export async function countContacts(userId: string, groupId?: number | null) {
+export const countContacts = withSafeDbErrors(async function countContacts(
+  userId: string,
+  groupId?: number | null,
+) {
   const [row] = await getDb()
     .select({ value: count() })
     .from(contacts)
     .where(and(eq(contacts.userId, userId), inGroup(groupId)));
   return row.value;
-}
+});
 
-export async function getContact(userId: string, id: number) {
+export const getContact = withSafeDbErrors(async function getContact(
+  userId: string,
+  id: number,
+) {
   const [row] = await getDb()
     .select({
       ...getTableColumns(contacts),
@@ -184,7 +197,7 @@ export async function getContact(userId: string, id: number) {
     .from(contacts)
     .where(and(eq(contacts.id, id), eq(contacts.userId, userId)));
   return row ?? null;
-}
+});
 
 type Transaction = Parameters<
   Parameters<ReturnType<typeof getDb>["transaction"]>[0]
@@ -239,7 +252,7 @@ function birthDateColumns(birthDate: BirthDate | null) {
   };
 }
 
-export async function createContact(
+export const createContact = withSafeDbErrors(async function createContact(
   userId: string,
   { groupIds, birthDate, ...input }: ContactInput,
 ) {
@@ -258,9 +271,9 @@ export async function createContact(
     await saveContactGroups(tx, userId, row.id, groupIds);
     return row.id;
   });
-}
+});
 
-export async function updateContact(
+export const updateContact = withSafeDbErrors(async function updateContact(
   userId: string,
   id: number,
   { groupIds, birthDate, ...input }: ContactInput,
@@ -305,7 +318,7 @@ export async function updateContact(
     await saveContactGroups(tx, userId, id, groupIds);
     return true;
   });
-}
+});
 
 // Exact timestamp for undoing a mark: microseconds are lost in a JS Date
 function exactTimestamp(column: typeof contacts.lastContactedAt) {
@@ -316,7 +329,10 @@ function exactTimestamp(column: typeof contacts.lastContactedAt) {
 
 // Marks that we were in touch today. Returns what's needed to undo it, or
 // null when there's nothing to mark: no such contact or no frequency set
-export async function markContacted(userId: string, id: number) {
+export const markContacted = withSafeDbErrors(async function markContacted(
+  userId: string,
+  id: number,
+) {
   return getDb().transaction(async (tx) => {
     const [row] = await tx
       .select({
@@ -338,12 +354,12 @@ export async function markContacted(userId: string, id: number) {
       .returning({ markedAt: exactTimestamp(contacts.lastContactedAt) });
     return { previous: row.previous, markedAt: marked.markedAt as string };
   });
-}
+});
 
 // Puts back the previous last contact. Does nothing if the contact was
 // marked again since (e.g. a new note from another tab); returns whether
 // the mark was undone
-export async function unmarkContacted(
+export const unmarkContacted = withSafeDbErrors(async function unmarkContacted(
   userId: string,
   id: number,
   markedAt: string,
@@ -361,13 +377,16 @@ export async function unmarkContacted(
     )
     .returning({ id: contacts.id });
   return row !== undefined;
-}
+});
 
 // Returns the deleted contact's name, or null if it was already gone
-export async function deleteContact(userId: string, id: number) {
+export const deleteContact = withSafeDbErrors(async function deleteContact(
+  userId: string,
+  id: number,
+) {
   const [row] = await getDb()
     .delete(contacts)
     .where(and(eq(contacts.id, id), eq(contacts.userId, userId)))
     .returning({ name: contacts.name });
   return row?.name ?? null;
-}
+});

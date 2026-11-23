@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { eq, sql, type SQL } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ContactInput } from "@/lib/contact-form";
@@ -1083,5 +1084,30 @@ describe("two users: contacts are separate", () => {
 
     expect(updated).toBe(false);
     expect(await groupIdsOf(theirContact, otherId)).toEqual([theirs]);
+  });
+});
+
+describe("database errors", () => {
+  it("do not carry what the user typed into the server log", async () => {
+    const typed = contactInput({
+      name: "Секретная Персона",
+      phone: "+7 999 111-22-33",
+      notes: "Личная заметка о разговоре",
+    });
+
+    // No such user: the database refuses the row (foreign key)
+    const error = await createContact("no-such-user", typed).then(
+      () => null,
+      (thrown: unknown) => thrown,
+    );
+
+    // What Node.js prints for an uncaught error
+    const logged = inspect(error, { depth: null });
+    expect(logged).toContain("createContact");
+    expect(logged).toContain("23503");
+    expect(logged).not.toContain("Секретная Персона");
+    expect(logged).not.toContain("+7 999 111-22-33");
+    expect(logged).not.toContain("Личная заметка о разговоре");
+    expect(logged).not.toContain("no-such-user");
   });
 });

@@ -3,6 +3,7 @@
 import { APIError } from "better-auth/api";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { toSafeError } from "@/db/safe-errors";
 import { getAuth, TOO_MANY_LOGIN_EMAILS } from "@/lib/auth";
 import { parseLoginEmail } from "@/lib/login-email";
 
@@ -42,7 +43,10 @@ export async function requestLoginLinkAction(
     if (error instanceof APIError && error.statusCode === 429) {
       return { status: "error", email: typed, error: TOO_MANY_LOGIN_EMAILS };
     }
-    console.error("Could not send the login email", error);
+    // A failed query here carries the address and the link's token: it is
+    // logged without them. A mail server error is logged as it is, its text
+    // is what tells why Resend refused
+    console.error("Could not send the login email", toSafeError(error));
     return { status: "error", email: typed, error: LOGIN_FAILED };
   }
   return { status: "sent", email: parsed.email };
@@ -50,6 +54,11 @@ export async function requestLoginLinkAction(
 
 // Ends the login on this device only and opens the login page
 export async function signOutAction() {
-  await getAuth().api.signOut({ headers: await headers() });
+  try {
+    await getAuth().api.signOut({ headers: await headers() });
+  } catch (error) {
+    // A failed query here carries the session key: it leaves without it
+    throw toSafeError(error, "signOut");
+  }
   redirect("/login");
 }

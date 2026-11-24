@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import { Roboto } from "next/font/google";
 import "./globals.css";
 
 // The landing's font. Self-hosted by Next.js: the browser makes no requests to Google
-const manrope = Manrope({
-  variable: "--font-manrope",
+const roboto = Roboto({
+  variable: "--font-sans-loaded",
   subsets: ["latin", "cyrillic"],
 });
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 // pages that need a login and the login pages
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" className={`${manrope.variable} h-full`}>
+    <html lang="ru" className={`${roboto.variable} h-full`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

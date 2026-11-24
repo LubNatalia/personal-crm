@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 /* Design tokens: a 1:1 copy of personal-crm-landing/src/styles/tokens.css.
-   Change them in both projects. --font-manrope is set in layout.tsx */
+   Change them in both projects. --font-sans-loaded is set in layout.tsx */
 @import "./tokens.css";
 
 /* The design has no dark theme: dark: styles apply only under a .dark class,
@@ -13,7 +13,7 @@
    with the shadcn CLI match the landing. "accent" stays the brand color from
    tokens.css; for subtle hover backgrounds use "muted" */
 @theme inline {
-  --color-background: var(--color-lavender-100);
+  --color-background: var(--color-page);
   --color-foreground: var(--color-ink);
   --color-card: var(--color-white);
   --color-card-foreground: var(--color-ink);
@@ -37,7 +37,7 @@
     @apply border-border outline-ring/50;
   }
   html {
-    @apply bg-lavender-100 font-sans text-ink antialiased;
+    @apply bg-page font-sans text-ink antialiased;
     /* As on the landing: labels use the font's natural line height */
     line-height: normal;
     -webkit-text-size-adjust: 100%;

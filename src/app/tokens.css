@@ -1,29 +1,35 @@
-/* Личная CRM — токены дизайна (вариант C «Лаванда»), Tailwind CSS 4.
-   The first @theme block is design/tokens.css as delivered by the designer.
-   The only change in it is --font-sans: Manrope is self-hosted (astro.config.mjs)
-   and exposed as --font-manrope.
+/* Личная CRM — токены дизайна, Tailwind CSS 4.
+   Colors and font follow the reference design picked in November 2026
+   (lilac accent, near-white background, Roboto); the accent and greys are a
+   touch darker than the reference so text keeps a 4.5:1 contrast.
+   --font-sans-loaded is the self-hosted Roboto (astro.config.mjs on the
+   landing, next/font in the app).
    The second @theme block adds the type scale, spacing and widths
    taken from design/HANDOFF.md and design/reference/*.html. */
 
 @theme {
   /* Шрифт */
-  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-sans: var(--font-sans-loaded), system-ui, sans-serif;
 
   /* Фон и текст */
-  --color-lavender-50: #f7f6fd; /* surface-soft: плитки внутри белых блоков */
-  --color-lavender-100: #eeebfa; /* основной фон страницы, чипы */
-  --color-lavender-200: #d9d2f7; /* подложка «стопки», плашка хранения, линия подвала */
-  --color-lavender-line: #e4e0f5; /* разделители строк в списке контактов */
-  --color-lavender-avatar: #e2dfee; /* нейтральные аватары */
+  --color-page: #fdfbff; /* page background */
+  --color-lavender-50: #f9f6ff; /* surface-soft: плитки внутри белых блоков */
+  --color-lavender-100: #f3eafd; /* chips, plaques, email background */
+  --color-lavender-200: #e7d7ff; /* подложка «стопки», плашка хранения, линия подвала */
+  --color-lavender-line: #eee6fa; /* разделители строк в списке контактов */
+  --color-lavender-avatar: #e7d7ff; /* нейтральные аватары */
 
-  --color-ink: #1e1838; /* заголовки, основной текст */
-  --color-ink-soft: #433c5e; /* лид-абзацы и текст карточек */
-  --color-ink-muted: #575073; /* подписи, метки полей */
-  --color-ink-chip: #4a4366; /* текст белой плашки над H1 */
+  --color-ink: #261a38; /* заголовки, основной текст */
+  --color-ink-soft: #4a4060; /* лид-абзацы и текст карточек */
+  --color-ink-muted: #6e6878; /* подписи, метки полей */
+  --color-ink-chip: #4a4060; /* текст белой плашки над H1 */
 
   /* Акцент — кнопки, номера шагов, иконки выгод */
-  --color-accent: #5b3fd9;
-  --color-accent-hover: #4329b8;
+  --color-accent: #8246df;
+  --color-accent-hover: #6d32c9;
+
+  /* Orange: second accent of the reference design, not used yet */
+  --color-orange: #fca41e;
 
   /* Коралловый — блок «Проблема», аватар Анны */
   --color-coral-50: #fff4f0;
@@ -53,10 +59,10 @@
   --shadow-step-lg: 0 10px 30px rgb(30 24 56 / 0.06);
 
   /* Трекинг заголовков */
-  --tracking-h1: -0.035em;
-  --tracking-h1-lg: -0.04em;
-  --tracking-h2: -0.03em;
-  --tracking-h3: -0.02em;
+  --tracking-h1: -0.02em;
+  --tracking-h1-lg: -0.025em;
+  --tracking-h2: -0.015em;
+  --tracking-h3: -0.01em;
 }
 
 @theme {
@@ -65,7 +71,7 @@
   --radius-icon-lg: 14px; /* coral icon squares (desktop) */
   --radius-field-lg: 16px; /* phone/email fields (desktop) */
   --radius-note-lg: 18px; /* sticky note (desktop) */
-  --tracking-h2-lg: -0.035em;
+  --tracking-h2-lg: -0.02em;
 
   /* Headings. "-lg" sizes are for desktop and grow with the screen */
   --text-h1: 2.5rem;

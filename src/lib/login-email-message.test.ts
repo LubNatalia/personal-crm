@@ -82,6 +82,6 @@ describe("email colors", () => {
     expect(EMAIL_COLORS.accent.toLowerCase()).toBe(token("accent"));
     expect(EMAIL_COLORS.ink.toLowerCase()).toBe(token("ink"));
     expect(EMAIL_COLORS.inkMuted.toLowerCase()).toBe(token("ink-muted"));
-    expect(EMAIL_COLORS.background.toLowerCase()).toBe(token("lavender-100"));
+    expect(EMAIL_COLORS.background.toLowerCase()).toBe(token("surface-100"));
   });
 });

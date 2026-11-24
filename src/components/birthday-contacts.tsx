@@ -42,7 +42,7 @@ export function BirthdayContacts({ contacts }: BirthdayContactsProps) {
                 // The name link stretches over the whole row
                 <li
                   key={row.id}
-                  className="relative grid grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-x-2 gap-y-1 py-2.5 not-last:border-b not-last:border-lavender-line lg:grid-cols-[minmax(0,1fr)_8rem_10rem_minmax(0,12rem)_1.25rem] lg:gap-x-3 lg:py-3"
+                  className="relative grid grid-cols-[minmax(0,1fr)_1.25rem] items-center gap-x-2 gap-y-1 py-2.5 not-last:border-b not-last:border-surface-line lg:grid-cols-[minmax(0,1fr)_8rem_10rem_minmax(0,12rem)_1.25rem] lg:gap-x-3 lg:py-3"
                 >
                   <Link
                     href={`/contacts/${row.id}`}
@@ -59,7 +59,7 @@ export function BirthdayContacts({ contacts }: BirthdayContactsProps) {
                         "inline-flex items-center gap-1.5 rounded-chip px-3 py-1 text-13 font-bold lg:text-14",
                         isToday
                           ? "bg-accent text-white"
-                          : "bg-lavender-100 text-accent",
+                          : "bg-surface-100 text-accent",
                       )}
                     >
                       <Cake

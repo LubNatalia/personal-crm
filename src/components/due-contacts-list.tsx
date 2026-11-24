@@ -153,7 +153,7 @@ export function DueContactsList({
             ))}
           </ul>
           {allRows.length > VISIBLE_ROWS && (
-            <div className="border-t border-lavender-line pt-4">
+            <div className="border-t border-surface-line pt-4">
               <Button
                 variant="outline"
                 aria-expanded={expanded}
@@ -190,7 +190,7 @@ function DueContactItem({ row, ticked, onToggle }: DueContactItemProps) {
 
   return (
     // The name link stretches over the whole row; the tick sits above it
-    <li className="relative grid grid-cols-[2.75rem_minmax(0,1fr)_1.25rem] items-center gap-x-2 gap-y-1 py-2.5 not-last:border-b not-last:border-lavender-line lg:grid-cols-[2.75rem_minmax(0,1fr)_8rem_13.5rem_minmax(0,15rem)_1.25rem] lg:gap-x-3 lg:py-1.5 xl:grid-cols-[2.75rem_minmax(0,1fr)_10rem_15rem_17rem_1.25rem]">
+    <li className="relative grid grid-cols-[2.75rem_minmax(0,1fr)_1.25rem] items-center gap-x-2 gap-y-1 py-2.5 not-last:border-b not-last:border-surface-line lg:grid-cols-[2.75rem_minmax(0,1fr)_8rem_13.5rem_minmax(0,15rem)_1.25rem] lg:gap-x-3 lg:py-1.5 xl:grid-cols-[2.75rem_minmax(0,1fr)_10rem_15rem_17rem_1.25rem]">
       <button
         type="button"
         role="checkbox"
@@ -260,7 +260,7 @@ function DueBadge({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-chip px-3 py-1 text-13 font-bold lg:text-14",
         isMarked || row.overdueDays === 0
-          ? "bg-lavender-100 text-accent"
+          ? "bg-surface-100 text-accent"
           : "bg-coral-50 text-coral-700",
       )}
     >

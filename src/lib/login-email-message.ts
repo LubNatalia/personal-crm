@@ -11,10 +11,10 @@ export const LOGIN_LINK_MINUTES = 15;
 // work in email, so the values of tokens.css are copied here. A test checks
 // that they stay equal
 export const EMAIL_COLORS = {
-  accent: "#8246df",
-  ink: "#261a38",
-  inkMuted: "#6e6878",
-  background: "#f3eafd",
+  accent: "#d90429",
+  ink: "#2b1d1f",
+  inkMuted: "#6f6466",
+  background: "#fdecee",
 };
 
 const VALIDITY = `Ссылка работает ${LOGIN_LINK_MINUTES} минут`;

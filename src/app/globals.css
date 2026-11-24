@@ -21,13 +21,13 @@
   --color-popover-foreground: var(--color-ink);
   --color-primary: var(--color-accent);
   --color-primary-foreground: var(--color-white);
-  --color-secondary: var(--color-lavender-100);
+  --color-secondary: var(--color-surface-100);
   --color-secondary-foreground: var(--color-ink);
-  --color-muted: var(--color-lavender-50);
+  --color-muted: var(--color-surface-50);
   --color-muted-foreground: var(--color-ink-muted);
   --color-destructive: var(--color-coral-700);
-  --color-border: var(--color-lavender-line);
-  --color-input: var(--color-lavender-200);
+  --color-border: var(--color-surface-line);
+  --color-input: var(--color-surface-200);
   --color-ring: var(--color-accent);
   --font-heading: var(--font-sans);
 }

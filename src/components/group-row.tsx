@@ -29,7 +29,7 @@ export function GroupRow({ id, name, contactCount }: GroupRowProps) {
   useLayoutEffect(() => () => setRenaming(false), []);
 
   return (
-    <li className="border-b border-lavender-line py-3 last:border-0 lg:py-3.5">
+    <li className="border-b border-surface-line py-3 last:border-0 lg:py-3.5">
       {renaming ? (
         <RenameForm id={id} name={name} onDone={() => setRenaming(false)} />
       ) : (

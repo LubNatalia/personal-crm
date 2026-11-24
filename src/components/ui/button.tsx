@@ -10,8 +10,8 @@ const buttonVariants = cva(
       variant: {
         default: "bg-accent text-white shadow-cta hover:bg-accent-hover",
         outline:
-          "border-lavender-200 bg-white text-ink hover:border-accent hover:text-accent",
-        ghost: "text-ink-muted hover:bg-lavender-50 hover:text-accent",
+          "border-surface-200 bg-white text-ink hover:border-accent hover:text-accent",
+        ghost: "text-ink-muted hover:bg-surface-50 hover:text-accent",
         // Irreversible actions, e.g. confirming a deletion
         destructive: "bg-coral-700 text-white hover:bg-coral-700/90",
       },

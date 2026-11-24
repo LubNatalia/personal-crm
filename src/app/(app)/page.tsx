@@ -200,7 +200,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/">) {
                       key={contact.id}
                       className={
                         isAdded
-                          ? "bg-lavender-100 hover:bg-lavender-100"
+                          ? "bg-surface-100 hover:bg-surface-100"
                           : undefined
                       }
                     >
@@ -259,7 +259,7 @@ function FilterLink({
         "flex min-h-11 max-w-full items-center rounded-chip border px-4 text-15 font-semibold wrap-break-word transition-colors focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-accent",
         active
           ? "border-accent bg-accent text-white"
-          : "border-lavender-200 bg-white text-ink hover:border-accent hover:text-accent",
+          : "border-surface-200 bg-white text-ink hover:border-accent hover:text-accent",
       )}
     >
       {children}
@@ -276,7 +276,7 @@ function GroupLabels({ names }: { names: string[] }) {
       {names.map((name) => (
         <li
           key={name}
-          className="rounded-chip bg-lavender-100 px-2.5 py-0.5 text-12 text-ink-muted wrap-break-word lg:text-13"
+          className="rounded-chip bg-surface-100 px-2.5 py-0.5 text-12 text-ink-muted wrap-break-word lg:text-13"
         >
           {name}
         </li>

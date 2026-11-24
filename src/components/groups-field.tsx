@@ -70,7 +70,7 @@ export function GroupsField({
                   "flex min-h-11 max-w-full items-center gap-1.5 rounded-chip border px-4 text-15 font-semibold transition-colors peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent",
                   isChecked
                     ? "border-accent bg-accent text-white"
-                    : "border-lavender-200 bg-white text-ink hover:border-accent hover:text-accent",
+                    : "border-surface-200 bg-white text-ink hover:border-accent hover:text-accent",
                 )}
               >
                 {isChecked && (
